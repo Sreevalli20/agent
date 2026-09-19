@@ -19,4 +19,4 @@ services:
 databases:
   - name: edupath-db
     databaseName: edupath
-    user: edupath_user
+    plan: free
