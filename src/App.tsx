@@ -14,12 +14,17 @@ import { EvidenceView } from './components/evidence/EvidenceView';
 import { EvidenceSubmissionModal } from './components/evidence/EvidenceSubmissionModal';
 import { ProgressView } from './components/progress/ProgressView';
 import { AskYourPathView } from './components/pathquery/AskYourPathView';
+import { AuthModal } from './components/auth/AuthModal';
+import { PasswordManagementModal } from './components/auth/PasswordManagementModal';
 
 export default function App() {
   const [state, setState] = useState<LearnerState>(() => storageService.getActiveState());
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [activeTaskForEvidence, setActiveTaskForEvidence] = useState<PlanTask | null>(null);
   const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   useEffect(() => {
     // Subscribe to state updates from storage service
@@ -42,6 +47,15 @@ export default function App() {
   const handleNewLearner = () => {
     storageService.createNewLearner('New Learner', 'learner@example.com', 'data-analyst');
     setCurrentTab('profile');
+  };
+
+  const handleOpenAuth = (mode: 'login' | 'register') => {
+    setAuthModalMode(mode);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleCloseAuth = () => {
+    setIsAuthModalOpen(false);
   };
 
   const renderContent = () => {
@@ -112,6 +126,7 @@ export default function App() {
         onNavigate={setCurrentTab}
         onOpenNewLearner={handleNewLearner}
         onShowLanding={() => setCurrentTab('landing')}
+        onOpenAuth={handleOpenAuth}
       />
 
       {/* Main Tab Navigation with Real-time Count Badges */}
@@ -167,6 +182,26 @@ export default function App() {
           onClose={handleCloseSubmitModal}
           onSubmittedSuccess={() => {
             // State automatically refreshes via storageService subscriber
+          }}
+        />
+      )}
+
+      {/* Authentication Modal - Moved to root level for proper positioning */}
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          initialMode={authModalMode}
+          onClose={handleCloseAuth}
+        />
+      )}
+
+      {/* Password Management Modal - Moved to root level for proper positioning */}
+      {isPasswordModalOpen && (
+        <PasswordManagementModal
+          isOpen={isPasswordModalOpen}
+          onClose={() => setIsPasswordModalOpen(false)}
+          onLogout={() => {
+            setIsPasswordModalOpen(false);
           }}
         />
       )}

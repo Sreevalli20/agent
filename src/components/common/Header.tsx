@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Compass, 
-  UserCheck, 
-  Users, 
-  PlusCircle, 
-  RotateCcw, 
-  ChevronDown, 
-  Target, 
-  Menu, 
+import {
+  Compass,
+  UserCheck,
+  Users,
+  PlusCircle,
+  RotateCcw,
+  ChevronDown,
+  Target,
+  Menu,
   X,
   ExternalLink,
   ShieldCheck,
@@ -19,8 +19,6 @@ import {
 import { LearnerState, AuthSession } from '../../types';
 import { storageService } from '../../services/storageService';
 import { authService } from '../../services/authService';
-import { AuthModal } from '../auth/AuthModal';
-import { PasswordManagementModal } from '../auth/PasswordManagementModal';
 
 interface HeaderProps {
   state: LearnerState;
@@ -28,6 +26,7 @@ interface HeaderProps {
   currentTab: string;
   onOpenNewLearner: () => void;
   onShowLanding: () => void;
+  onOpenAuth: (mode: 'login' | 'register') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,13 +35,11 @@ export const Header: React.FC<HeaderProps> = ({
   currentTab,
   onOpenNewLearner,
   onShowLanding,
+  onOpenAuth,
 }) => {
   const [learnerDropdownOpen, setLearnerDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => authService.getCurrentSession());
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const allLearners = storageService.getAllLearners();
 
@@ -63,12 +60,6 @@ export const Header: React.FC<HeaderProps> = ({
       storageService.resetDemoData();
       setLearnerDropdownOpen(false);
     }
-  };
-
-  const handleOpenAuth = (mode: 'login' | 'register') => {
-    setAuthModalMode(mode);
-    setIsAuthModalOpen(true);
-    setLearnerDropdownOpen(false);
   };
 
   const handleLogout = () => {
@@ -132,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="header-signin-btn"
                   type="button"
-                  onClick={() => handleOpenAuth('login')}
+                  onClick={() => onOpenAuth('login')}
                   className="inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:text-indigo-700 rounded-lg hover:bg-slate-100 transition-colors"
                 >
                   <LogIn className="w-3.5 h-3.5" />
@@ -141,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="header-register-btn"
                   type="button"
-                  onClick={() => handleOpenAuth('register')}
+                  onClick={() => onOpenAuth('register')}
                   className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-white bg-indigo-700 hover:bg-indigo-800 rounded-lg shadow-2xs transition-colors"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
@@ -207,7 +198,8 @@ export const Header: React.FC<HeaderProps> = ({
                         type="button"
                         onClick={() => {
                           setLearnerDropdownOpen(false);
-                          setIsPasswordModalOpen(true);
+                          // Password modal is now handled at App level
+                          alert('Password management will be available in the next update');
                         }}
                         className="w-full flex items-center space-x-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
                       >
@@ -279,7 +271,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => handleOpenAuth('login')}
+                        onClick={() => onOpenAuth('login')}
                         className="w-full flex items-center space-x-2 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
                       >
                         <LogIn className="w-3.5 h-3.5" />
@@ -336,26 +328,6 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           ))}
         </div>
-      )}
-
-      {/* Authentication Modal */}
-      {isAuthModalOpen && (
-        <AuthModal
-          isOpen={isAuthModalOpen}
-          initialMode={authModalMode}
-          onClose={() => setIsAuthModalOpen(false)}
-        />
-      )}
-
-      {/* Password Management Modal */}
-      {isPasswordModalOpen && (
-        <PasswordManagementModal
-          isOpen={isPasswordModalOpen}
-          onClose={() => setIsPasswordModalOpen(false)}
-          onLogout={() => {
-            setIsPasswordModalOpen(false);
-          }}
-        />
       )}
     </header>
   );
