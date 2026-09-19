@@ -29,8 +29,22 @@ async def lifespan(app: FastAPI):
         # Create database tables
         Base.metadata.create_all(bind=engine)
         print("Database tables created/verified!")
+        
+        # Seed demo data if not exists
+        from sqlalchemy.orm import Session
+        db = Session(engine)
+        try:
+            existing_alex = db.query(User).filter(User.email == "alex.chen@example.edu").first()
+            if not existing_alex:
+                print("Seeding demo learner data...")
+                from seed_demo_data import seed_demo_alex
+                seed_demo_alex()
+            else:
+                print("Demo learner data already exists")
+        finally:
+            db.close()
     except Exception as e:
-        print(f"Error creating database tables: {e}")
+        print(f"Error during startup: {e}")
         import traceback
         traceback.print_exc()
     yield

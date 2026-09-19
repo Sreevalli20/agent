@@ -89,7 +89,13 @@ class ApiService {
   
   async getLearnerState(learnerId: string): Promise<LearnerState> {
     return this.withFallback(
-      () => this.request<LearnerState>(`/api/v1/learners/${learnerId}/state`),
+      () => {
+        // For demo learners, use the demo endpoint
+        if (learnerId === 'demo-learner-alex' || learnerId === 'demo-learner-marcus') {
+          return this.request<LearnerState>(`/api/v1/learners/demo/${learnerId === 'demo-learner-alex' ? 'alex' : 'marcus'}/state`);
+        }
+        return this.request<LearnerState>(`/api/v1/learners/${learnerId}/state`);
+      },
       () => {
         const state = storageService.getActiveState();
         if (state.user.id !== learnerId) {
