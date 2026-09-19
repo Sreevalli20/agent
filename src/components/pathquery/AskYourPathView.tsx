@@ -28,6 +28,7 @@ export const AskYourPathView: React.FC<AskYourPathViewProps> = ({ state, onNavig
 
   const presetQuestions = [
     'What should I learn today?',
+    'What should I work on next and why?',
     'Why is Power BI a priority?',
     'What am I still missing for my target role?',
     'What should I practice next?',

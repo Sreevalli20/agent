@@ -529,7 +529,53 @@ class EvaluationService:
                         'You can start this task directly in your Execution Plan or submit evidence once completed.'
             else:
                 response = 'You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.'
-        
+
+        elif 'next' in query and 'why' in query:
+            # Explain WHY this is the next action based on state changes
+            if next_action and next_action['task']:
+                related_capability = next_action['task']['capability']
+                actionable_task_id = next_action['task']['id']
+
+                # Look for recent evidence that caused state changes
+                recent_assessment = state['assessments'][0] if state['assessments'] else None
+                recent_evidence = state['evidenceHistory'][0] if state['evidenceHistory'] else None
+                contextual_reason = ''
+
+                if recent_assessment and recent_evidence:
+                    completed_capability = recent_assessment['capability']
+                    prev_level = recent_assessment['previousLevel']
+                    new_level = recent_assessment['newLevel']
+                    prev_strength = recent_assessment['previousStrength']
+                    new_strength = recent_assessment['newStrength']
+
+                    # Find the task status for this capability
+                    task_status = None
+                    for t in state['planTasks']:
+                        if t['capability'] == completed_capability:
+                            task_status = t['status']
+                            break
+
+                    if task_status == 'Verified':
+                        completed_gap = next((g for g in state['gaps'] if g['capability'] == completed_capability), None)
+                        gap_info = f'{completed_gap["gap"]}' if completed_gap else 'High'
+                        priority_info = f'{completed_gap["priority"]}' if completed_gap else 'Medium'
+                        contextual_reason = f'Your **{completed_capability}** evidence was verified, which moved your capability from **{prev_level}** to **{new_level}** and improved evidence from **{prev_strength}** to **{new_strength}**. ' \
+                            f'This reduced that gap from **{gap_info}** to **{gap_info}** with **{priority_info}** priority. ' \
+                            f'Since that task is now verified, the system has adapted your path to the next important remaining gap: **{next_action["task"]["capability"]}**.'
+                    else:
+                        contextual_reason = f'Your most recent evidence submission for **{completed_capability}** is being processed. ' \
+                            f'Your next priority action is **{next_action["task"]["capability"]}** based on your current highest unverified requirement ({next_action["reason"]}).'
+                else:
+                    contextual_reason = f'Your next priority action is **{next_action["task"]["capability"]}** based on your current highest unverified requirement ({next_action["reason"]}).'
+
+                response = f'Your next action is **Day {next_action["task"]["day"]}: {next_action["task"]["learningObjective"]}** ({next_action["task"]["expectedDuration"]}).\n\n' \
+                        f'**Contextual Reason:** {contextual_reason}\n\n' \
+                        f'**Practice Activity:** {next_action["task"]["practiceActivity"]}\n' \
+                        f'**Deliverable:** {next_action["task"]["deliverable"]}\n\n' \
+                        f'**Why this matters:** {next_action["whyItMatters"]}'
+            else:
+                response = 'You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.'
+
         elif 'why' in query and ('priority' in query or 'important' in query):
             mentioned_skill = next((s for s in state['skills'] if query.startswith(s['capability'].lower().split(' ')[0])), None)
             if mentioned_skill:

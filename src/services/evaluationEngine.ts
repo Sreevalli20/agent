@@ -609,6 +609,46 @@ export function answerPathQuery(state: LearnerState, rawQuery: string): PathConv
     } else {
       response = `You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.`;
     }
+  } else if (query.includes('next') && query.includes('why')) {
+    // Explain WHY this is the next action based on state changes
+    if (nextAction && nextAction.task) {
+      relatedCapability = nextAction.task.capability;
+      actionableTaskId = nextAction.task.id;
+
+      // Look for recent evidence that caused state changes
+      const recentAssessment = state.assessments[0];
+      const recentEvidence = state.evidenceHistory[0];
+      let contextualReason = '';
+
+      if (recentAssessment && recentEvidence) {
+        const completedCapability = recentAssessment.capability;
+        const prevLevel = recentAssessment.previousLevel;
+        const newLevel = recentAssessment.newLevel;
+        const prevStrength = recentAssessment.previousStrength;
+        const newStrength = recentAssessment.newStrength;
+        const taskStatus = state.planTasks.find(t => t.capability === completedCapability)?.status;
+
+        if (taskStatus === 'Verified') {
+          const completedGap = state.gaps.find(g => g.capability === completedCapability);
+          contextualReason = `Your **${completedCapability}** evidence was verified, which moved your capability from **${prevLevel}** to **${newLevel}** and improved evidence from **${prevStrength}** to **${newStrength}**. ` +
+            `This reduced that gap from **${completedGap?.gap || 'High'}** to **${completedGap?.gap || 'Medium'}** with **${completedGap?.priority || 'Medium'}** priority. ` +
+            `Since that task is now verified, the system has adapted your path to the next important remaining gap: **${nextAction.task.capability}**.`;
+        } else {
+          contextualReason = `Your most recent evidence submission for **${completedCapability}** is being processed. ` +
+            `Your next priority action is **${nextAction.task.capability}** based on your current highest unverified requirement (${nextAction.reason}).`;
+        }
+      } else {
+        contextualReason = `Your next priority action is **${nextAction.task.capability}** based on your current highest unverified requirement (${nextAction.reason}).`;
+      }
+
+      response = `Your next action is **Day ${nextAction.task.day}: ${nextAction.task.learningObjective}** (${nextAction.task.expectedDuration}).\n\n` +
+        `**Contextual Reason:** ${contextualReason}\n\n` +
+        `**Practice Activity:** ${nextAction.task.practiceActivity}\n` +
+        `**Deliverable:** ${nextAction.task.deliverable}\n\n` +
+        `**Why this matters:** ${nextAction.whyItMatters}`;
+    } else {
+      response = `You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.`;
+    }
   } else if (query.includes('why') && (query.includes('priority') || query.includes('important'))) {
     // Check if a specific capability was asked
     const mentionedSkill = state.skills.find(s => query.includes(s.capability.toLowerCase().split(' ')[0].toLowerCase()));
