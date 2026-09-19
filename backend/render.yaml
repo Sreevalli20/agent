@@ -13,4 +13,4 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: CORS_ORIGINS
-        value: https://your-frontend-url.vercel.app,https://localhost:3000
+        value: https://edupath-silk.vercel.app,https://localhost:3000
