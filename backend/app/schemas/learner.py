@@ -29,8 +29,6 @@ class ProfileBase(BaseModel):
     target_role: str
     weekly_available_hours: int
     initial_skills_text: str = ""
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
 
 
 class ProfileCreate(ProfileBase):
@@ -40,8 +38,8 @@ class ProfileCreate(ProfileBase):
 class Profile(ProfileBase):
     id: str
     learner_id: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -201,15 +199,15 @@ class AssessmentRecord(AssessmentRecordBase):
 
 
 class LearnerProgressBase(BaseModel):
-    completed_activities: int
-    total_activities: int
-    current_activities: int
-    remaining_gaps: int
+    completed_activities: int = 0
+    total_activities: int = 0
+    current_activities: int = 0
+    remaining_gaps: int = 0
     recently_strengthened: List[str] = []
     capabilities_needing_evidence: List[str] = []
-    next_milestone: str
-    weekly_target_hours: int
-    hours_completed_this_week: float
+    next_milestone: str = ""
+    weekly_target_hours: int = 10
+    hours_completed_this_week: float = 0.0
 
 
 class LearnerProgressCreate(LearnerProgressBase):
@@ -217,7 +215,7 @@ class LearnerProgressCreate(LearnerProgressBase):
 
 
 class LearnerProgress(LearnerProgressBase):
-    learner_id: str
+    learner_id: Optional[str] = None
     
     class Config:
         from_attributes = True
