@@ -7,9 +7,9 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        value: sqlite:///./edupath.db
       - key: SECRET_KEY
-        sync: false
+        value: edupath-production-secret-key-change-in-deployment
       - key: ENVIRONMENT
         value: production
       - key: CORS_ORIGINS
