@@ -127,6 +127,22 @@ class LearnerService:
         progress = self.db.query(ProgressModel).filter(ProgressModel.learner_id == learner_id).first()
         conversations = self.db.query(ConversationModel).filter(ConversationModel.learner_id == learner_id).all()
         
+        # Handle progress JSON fields
+        progress_dict = None
+        if progress:
+            progress_dict = {
+                "learner_id": progress.learner_id,
+                "completed_activities": progress.completed_activities,
+                "total_activities": progress.total_activities,
+                "current_activities": progress.current_activities,
+                "remaining_gaps": progress.remaining_gaps,
+                "recently_strengthened": self._json_list(progress.recently_strengthened),
+                "capabilities_needing_evidence": self._json_list(progress.capabilities_needing_evidence),
+                "next_milestone": progress.next_milestone,
+                "weekly_target_hours": progress.weekly_target_hours,
+                "hours_completed_this_week": progress.hours_completed_this_week
+            }
+        
         # Return minimal state that always passes validation
         return LearnerState(
             user=UserSchema.model_validate(db_user),
@@ -138,7 +154,7 @@ class LearnerService:
             plan_tasks=[PlanTaskSchema.model_validate(task) for task in tasks],
             evidence_history=[EvidenceRecordSchema.model_validate(ev) for ev in evidence],
             assessments=[AssessmentRecordSchema.model_validate(assess) for assess in assessments],
-            progress=LearnerProgressSchema.model_validate(progress) if progress else None,
+            progress=LearnerProgressSchema(**progress_dict) if progress_dict else None,
             conversations=[PathConversationMessageSchema.model_validate(conv) for conv in conversations]
         )
     
