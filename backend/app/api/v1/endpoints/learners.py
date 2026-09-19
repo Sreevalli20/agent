@@ -62,11 +62,16 @@ def get_learner_state(
     db: Session = Depends(get_db)
 ):
     """Get complete learner state"""
-    service = LearnerService(db)
-    state = service.get_learner_state(learner_id)
-    if not state:
-        raise HTTPException(status_code=404, detail="Learner not found")
-    return state
+    try:
+        service = LearnerService(db)
+        state = service.get_learner_state(learner_id)
+        if not state:
+            raise HTTPException(status_code=404, detail="Learner not found")
+        return state
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error retrieving learner state: {str(e)}")
 
 
 @router.put("/{learner_id}/state", response_model=LearnerState)
