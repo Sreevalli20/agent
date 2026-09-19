@@ -106,6 +106,10 @@ class SkillGapBase(BaseModel):
     estimated_hours_to_close: int
 
 
+class SkillGapCreate(SkillGapBase):
+    pass
+
+
 class SkillGap(SkillGapBase):
     id: str
     learner_id: str

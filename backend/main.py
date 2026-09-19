@@ -22,11 +22,6 @@ async def lifespan(app: FastAPI):
     print("Shutting down EduPath Backend...")
 
 
-# Rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-
-
 app = FastAPI(
     title="EduPath API",
     description="Evidence-Based Career Gap & Learning Execution Platform",
@@ -34,17 +29,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
 # Security middleware
 if settings.ENVIRONMENT == "production":
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=settings.CORS_ORIGINS
+        allowed_hosts=settings.cors_origins_list
     )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],

@@ -9,3 +9,7 @@ coverage/
 .vite/
 .cache/
 *.tsbuildinfo
+__pycache__/
+*.db
+*.sqlite
+*.sqlite3
