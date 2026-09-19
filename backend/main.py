@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBasic, HTTPBearer
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.db.session import engine
@@ -51,12 +52,7 @@ app.add_middleware(
 )
 
 # Rate limiting
-@app.exception_handler(_rate_limit_exceeded_handler)
-async def rate_limit_exceeded_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=429,
-        content={"detail": "Too many requests"},
-    )
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Security headers middleware
 @app.middleware("http")
