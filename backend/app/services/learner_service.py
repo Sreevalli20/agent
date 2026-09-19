@@ -25,8 +25,11 @@ class LearnerService:
     
     def _json_list(self, field: str) -> List[str]:
         """Parse JSON list from database field"""
+        if not field:
+            return []
         try:
-            return json.loads(field) if field else []
+            parsed = json.loads(field)
+            return parsed if isinstance(parsed, list) else []
         except:
             return []
     
@@ -141,6 +144,20 @@ class LearnerService:
                 "next_milestone": progress.next_milestone,
                 "weekly_target_hours": progress.weekly_target_hours,
                 "hours_completed_this_week": progress.hours_completed_this_week
+            }
+        else:
+            # Default progress if none exists
+            progress_dict = {
+                "learner_id": learner_id,
+                "completed_activities": 0,
+                "total_activities": 0,
+                "current_activities": 0,
+                "remaining_gaps": 0,
+                "recently_strengthened": [],
+                "capabilities_needing_evidence": [],
+                "next_milestone": "Upload documents to begin",
+                "weekly_target_hours": 10,
+                "hours_completed_this_week": 0.0
             }
         
         # Return minimal state that always passes validation
