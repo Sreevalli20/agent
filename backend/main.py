@@ -25,7 +25,6 @@ async def lifespan(app: FastAPI):
         print("Database tables created/verified!")
     except Exception as e:
         print(f"Error creating database tables: {e}")
-        print(f"DATABASE_URL: {engine.url}")
     yield
     # Shutdown
     print("Shutting down EduPath Backend...")
