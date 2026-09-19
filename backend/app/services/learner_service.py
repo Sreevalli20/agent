@@ -1,5 +1,4 @@
 import json
-import uuid
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.schemas.learner import (
@@ -126,38 +125,9 @@ class LearnerService:
         progress = self.db.query(ProgressModel).filter(ProgressModel.learner_id == learner_id).first()
         conversations = self.db.query(ConversationModel).filter(ConversationModel.learner_id == learner_id).all()
         
-        # Handle None profile by creating a default one
-        if not profile:
-            profile = ProfileModel(
-                id=str(uuid.uuid4()),
-                learner_id=learner_id,
-                full_name=db_user.name,
-                experience_level="Entry",
-                current_role="Student",
-                career_goal="Develop verified competencies",
-                target_role="Data Analyst",
-                weekly_available_hours=10,
-                initial_skills_text=""
-            )
-        
-        # Handle None progress by creating a default one
-        if not progress:
-            progress = ProgressModel(
-                learner_id=learner_id,
-                completed_activities=0,
-                total_activities=0,
-                current_activities=0,
-                remaining_gaps=0,
-                recently_strengthened="[]",
-                capabilities_needing_evidence="[]",
-                next_milestone="Upload documents to begin",
-                weekly_target_hours=10,
-                hours_completed_this_week=0.0
-            )
-        
         return LearnerState(
             user=UserSchema.model_validate(db_user),
-            profile=ProfileSchema.model_validate(profile),
+            profile=ProfileSchema.model_validate(profile) if profile else None,
             documents=[DocumentUploadSchema.model_validate(doc) for doc in documents],
             skills=[SkillCapabilitySchema.model_validate(skill) for skill in skills],
             selected_target_id=profile.target_role.lower().replace(" ", "-") if profile else "data-analyst",
@@ -165,7 +135,7 @@ class LearnerService:
             plan_tasks=[PlanTaskSchema.model_validate(task) for task in tasks],
             evidence_history=[EvidenceRecordSchema.model_validate(ev) for ev in evidence],
             assessments=[AssessmentRecordSchema.model_validate(assess) for assess in assessments],
-            progress=LearnerProgressSchema.model_validate(progress),
+            progress=LearnerProgressSchema.model_validate(progress) if progress else None,
             conversations=[PathConversationMessageSchema.model_validate(conv) for conv in conversations]
         )
     

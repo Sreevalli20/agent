@@ -244,7 +244,7 @@ class PathConversationMessage(PathConversationMessageBase):
 
 class LearnerStateBase(BaseModel):
     user: User
-    profile: Profile
+    profile: Optional[Profile] = None
     documents: List[DocumentUpload]
     skills: List[SkillCapability]
     selected_target_id: str
@@ -253,7 +253,7 @@ class LearnerStateBase(BaseModel):
     plan_tasks: List[PlanTask]
     evidence_history: List[EvidenceRecord]
     assessments: List[AssessmentRecord]
-    progress: LearnerProgress
+    progress: Optional[LearnerProgress] = None
     conversations: List[PathConversationMessage]
 
 
