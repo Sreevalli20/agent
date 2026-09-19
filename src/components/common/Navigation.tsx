@@ -81,7 +81,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onNavigate, 
   ];
 
   return (
-    <nav className="bg-white border-b border-slate-200">
+    <nav className="bg-white border-b border-slate-200 relative z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex space-x-1 sm:space-x-2 overflow-x-auto py-2 no-scrollbar scroll-smooth">
           {navItems.map(item => {
