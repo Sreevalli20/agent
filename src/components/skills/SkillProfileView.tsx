@@ -1,46 +1,46 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Search, 
-  Filter, 
-  ChevronRight, 
-  Plus, 
-  Tag, 
-  FolderKanban, 
-  Edit2, 
-  X, 
-  Check, 
+import {
+  Search,
+  Filter,
+  ChevronRight,
+  Plus,
+  Tag,
+  FolderKanban,
+  Edit2,
+  X,
+  Check,
   Layers,
   Sparkles,
   ExternalLink
 } from 'lucide-react';
-import { 
-  SkillCapability, 
-  EvidenceStrength, 
-  LearnerState, 
-  PREDEFINED_SKILL_CATEGORIES 
+import {
+  SkillCapability,
+  EvidenceStrength,
+  LearnerState,
+  PREDEFINED_SKILL_CATEGORIES
 } from '../../types';
 import { storageService } from '../../services/storageService';
-import { SkillTagModal } from './SkillTagModal';
-import { AddSkillModal } from './AddSkillModal';
 
 interface SkillProfileViewProps {
   state: LearnerState;
   onNavigate: (tab: any) => void;
   onSelectCapabilityForEvidence?: (cap: string) => void;
+  onOpenAddSkill?: () => void;
+  onEditSkill?: (skill: SkillCapability | null) => void;
 }
 
 export const SkillProfileView: React.FC<SkillProfileViewProps> = ({
   state,
   onNavigate,
   onSelectCapabilityForEvidence,
+  onOpenAddSkill,
+  onEditSkill,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStrength, setFilterStrength] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [selectedSkill, setSelectedSkill] = useState<SkillCapability | null>(null);
-  const [editingSkill, setEditingSkill] = useState<SkillCapability | null>(null);
-  const [isAddSkillOpen, setIsAddSkillOpen] = useState(false);
   const [quickTagSkillId, setQuickTagSkillId] = useState<string | null>(null);
   const [quickTagInput, setQuickTagInput] = useState('');
 
@@ -153,7 +153,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({
         <div className="flex items-center space-x-3">
           <button
             id="skills-add-new-btn"
-            onClick={() => setIsAddSkillOpen(true)}
+            onClick={() => onOpenAddSkill?.()}
             className="inline-flex items-center space-x-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg shadow-2xs transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -430,7 +430,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({
                       <button
                         type="button"
                         title="Edit categorization and tags"
-                        onClick={() => setEditingSkill(skill)}
+                        onClick={() => onEditSkill?.(skill)}
                         className="p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 transition-colors inline-flex items-center"
                       >
                         <Tag className="w-3.5 h-3.5" />
@@ -472,21 +472,6 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({
           </table>
         </div>
       </div>
-
-      {/* Add Skill Modal */}
-      {isAddSkillOpen && (
-        <AddSkillModal
-          onClose={() => setIsAddSkillOpen(false)}
-        />
-      )}
-
-      {/* Edit Skill Category & Tags Modal */}
-      {editingSkill && (
-        <SkillTagModal
-          skill={editingSkill}
-          onClose={() => setEditingSkill(null)}
-        />
-      )}
 
       {/* Capability Detailed Inspection Modal */}
       {selectedSkill && (
@@ -567,7 +552,7 @@ export const SkillProfileView: React.FC<SkillProfileViewProps> = ({
                 onClick={() => {
                   const s = selectedSkill;
                   setSelectedSkill(null);
-                  setEditingSkill(s);
+                  onEditSkill?.(s);
                 }}
                 className="inline-flex items-center space-x-1 text-xs font-semibold text-indigo-700 hover:text-indigo-900"
               >

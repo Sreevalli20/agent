@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from './services/storageService';
-import { LearnerState, PlanTask } from './types';
+import { LearnerState, PlanTask, SkillCapability } from './types';
 import { Header } from './components/common/Header';
 import { Navigation } from './components/common/Navigation';
 import { LandingPage } from './components/landing/LandingPage';
@@ -16,6 +16,8 @@ import { ProgressView } from './components/progress/ProgressView';
 import { AskYourPathView } from './components/pathquery/AskYourPathView';
 import { AuthModal } from './components/auth/AuthModal';
 import { PasswordManagementModal } from './components/auth/PasswordManagementModal';
+import { AddSkillModal } from './components/skills/AddSkillModal';
+import { SkillTagModal } from './components/skills/SkillTagModal';
 
 export default function App() {
   const [state, setState] = useState<LearnerState>(() => storageService.getActiveState());
@@ -25,6 +27,8 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isAddSkillOpen, setIsAddSkillOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<SkillCapability | null>(null);
 
   useEffect(() => {
     // Subscribe to state updates from storage service
@@ -81,7 +85,14 @@ export default function App() {
       case 'profile':
         return <ProfileView state={state} onNavigate={setCurrentTab} />;
       case 'skills':
-        return <SkillProfileView state={state} onNavigate={setCurrentTab} />;
+        return (
+          <SkillProfileView
+            state={state}
+            onNavigate={setCurrentTab}
+            onOpenAddSkill={() => setIsAddSkillOpen(true)}
+            onEditSkill={setEditingSkill}
+          />
+        );
       case 'target':
         return <CareerTargetView state={state} onNavigate={setCurrentTab} />;
       case 'gap':
@@ -118,61 +129,63 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 selection:bg-indigo-500 selection:text-white antialiased">
-      {/* Top Application Header with Learner Switcher & Target Role */}
-      <Header
-        state={state}
-        currentTab={currentTab}
-        onNavigate={setCurrentTab}
-        onOpenNewLearner={handleNewLearner}
-        onShowLanding={() => setCurrentTab('landing')}
-        onOpenAuth={handleOpenAuth}
-      />
-
-      {/* Main Tab Navigation with Real-time Count Badges */}
-      {currentTab !== 'landing' && (
-        <Navigation
+    <>
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 selection:bg-indigo-500 selection:text-white antialiased">
+        {/* Top Application Header with Learner Switcher & Target Role */}
+        <Header
+          state={state}
           currentTab={currentTab}
           onNavigate={setCurrentTab}
-          state={state}
+          onOpenNewLearner={handleNewLearner}
+          onShowLanding={() => setCurrentTab('landing')}
+          onOpenAuth={handleOpenAuth}
         />
-      )}
 
-      {/* Primary Workspace Viewport */}
-      <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {renderContent()}
-      </main>
+        {/* Main Tab Navigation with Real-time Count Badges */}
+        {currentTab !== 'landing' && (
+          <Navigation
+            currentTab={currentTab}
+            onNavigate={setCurrentTab}
+            state={state}
+          />
+        )}
 
-      {/* Footer info bar */}
-      <footer className="border-t border-slate-200/80 bg-white py-4 mt-12 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="font-bold text-slate-700">EduPath</span>
-            <span>•</span>
-            <span>Evidence-Based Capability Architecture & Execution Platform</span>
+        {/* Primary Workspace Viewport */}
+        <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {renderContent()}
+        </main>
+
+        {/* Footer info bar */}
+        <footer className="border-t border-slate-200/80 bg-white py-4 mt-12 text-xs text-slate-500">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-slate-700">EduPath</span>
+              <span>•</span>
+              <span>Evidence-Based Capability Architecture & Execution Platform</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setCurrentTab('landing')}
+                className="hover:text-slate-800 underline"
+              >
+                Product Overview
+              </button>
+              <button
+                onClick={() => setCurrentTab('profile')}
+                className="hover:text-slate-800 underline"
+              >
+                Profile Builder
+              </button>
+              <button
+                onClick={() => setCurrentTab('ask-path')}
+                className="hover:text-slate-800 underline"
+              >
+                Ask Your Path
+              </button>
+            </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setCurrentTab('landing')}
-              className="hover:text-slate-800 underline"
-            >
-              Product Overview
-            </button>
-            <button
-              onClick={() => setCurrentTab('profile')}
-              className="hover:text-slate-800 underline"
-            >
-              Profile Builder
-            </button>
-            <button
-              onClick={() => setCurrentTab('ask-path')}
-              className="hover:text-slate-800 underline"
-            >
-              Ask Your Path
-            </button>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
 
       {/* Modal for Submitting Evidence & Real Reassessment */}
       {isEvidenceModalOpen && (
@@ -186,7 +199,7 @@ export default function App() {
         />
       )}
 
-      {/* Authentication Modal - Moved to root level for proper positioning */}
+      {/* Authentication Modal - Moved outside main container for proper positioning */}
       {isAuthModalOpen && (
         <AuthModal
           isOpen={isAuthModalOpen}
@@ -195,7 +208,7 @@ export default function App() {
         />
       )}
 
-      {/* Password Management Modal - Moved to root level for proper positioning */}
+      {/* Password Management Modal - Moved outside main container for proper positioning */}
       {isPasswordModalOpen && (
         <PasswordManagementModal
           isOpen={isPasswordModalOpen}
@@ -205,6 +218,29 @@ export default function App() {
           }}
         />
       )}
-    </div>
+
+      {/* Add Skill Modal - Moved outside main container for proper positioning */}
+      {isAddSkillOpen && (
+        <AddSkillModal
+          onClose={() => setIsAddSkillOpen(false)}
+          onAdded={() => {
+            // Force state refresh via storageService
+            setState(storageService.getActiveState());
+          }}
+        />
+      )}
+
+      {/* Edit Skill Category & Tags Modal - Moved outside main container for proper positioning */}
+      {editingSkill && (
+        <SkillTagModal
+          skill={editingSkill}
+          onClose={() => setEditingSkill(null)}
+          onSaved={() => {
+            // Force state refresh via storageService
+            setState(storageService.getActiveState());
+          }}
+        />
+      )}
+    </>
   );
 }
