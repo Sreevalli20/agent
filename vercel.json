@@ -11,6 +11,6 @@
     }
   ],
   "env": {
-    "VITE_API_BASE_URL": "https://edupath-backend-55ya.onrender.com"
+    "VITE_API_BASE_URL": ""
   }
 }
