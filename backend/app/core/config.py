@@ -18,9 +18,7 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
     
     # Database Configuration
-    @property
-    def DATABASE_URL(self) -> str:
-        return os.getenv("DATABASE_URL", "sqlite:///./edupath.db") or "sqlite:///./edupath.db"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./edupath.db")
     
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
