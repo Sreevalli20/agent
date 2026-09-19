@@ -502,23 +502,394 @@ class EvaluationService:
         
         return None
     
-    def answer_path_query(self, state: Dict[str, Any], raw_query: str) -> Dict[str, Any]:
-        """Natural language query processing engine grounded in learner's actual state"""
-        query = raw_query.lower().strip()
-        response = ''
-        related_capability = None
-        actionable_task_id = None
+    def _classify_query_intent(self, query: str) -> str:
+        """Classify the intent of a natural language query"""
+        q = query.lower().strip()
         
+        # Priority order - check more specific intents first
+        
+        # "What should I learn today?" - distinct from other queries
+        if ('learn' in q and 'today' in q) or \
+           ('what should i do' in q and 'today' in q) or \
+           ('today' in q and ('learn' in q or 'study' in q)):
+            return 'learn_today'
+        
+        # "What should I work on next and why?" - must include both "next" and "why"
+        if ('next' in q and 'why' in q) or \
+           'why did my plan change' in q or \
+           'why should i do this next' in q:
+            return 'next_with_why'
+        
+        # "Why is Power BI a priority?" - specific capability analysis
+        if 'why' in q and ('priority' in q or 'important' in q):
+            # Check if a specific capability is mentioned
+            capabilities = ['power bi', 'sql', 'python', 'statistics', 'communication', 'modeling', 'typescript', 'react', 'api', 'terraform', 'figma']
+            mentioned_capability = next((cap for cap in capabilities if cap in q), None)
+            if mentioned_capability:
+                return 'specific_capability_priority'
+        
+        # "What am I still missing for my target role?" - gap analysis
+        if ('missing' in q or 'still need' in q or 'gap' in q) and \
+           ('target' in q or 'role' in q or 'skills' in q):
+            return 'missing_gaps'
+        
+        # "What should I practice next?" - practice activity focus
+        if ('practice' in q and 'next' in q) or \
+           'next practice' in q or \
+           'what should i practice' in q:
+            return 'practice_next'
+        
+        # "What did I improve this week?" - progress/assessment focus
+        if ('improve' in q or 'strengthen' in q or 'progress' in q) and \
+           ('week' in q or 'recently' in q or 'have i' in q):
+            return 'improvements'
+        
+        # "What evidence do I still need?" - evidence requirements
+        if ('evidence' in q or 'proof' in q or 'submit' in q) and \
+           ('still need' in q or 'missing' in q or 'require' in q):
+            return 'missing_evidence'
+        
+        # Natural language variations mapping
+        if 'what should i do today' in q or 'what do i learn today' in q:
+            return 'learn_today'
+        
+        if 'what is my next task' in q or 'what should i do next' in q:
+            return 'next_with_why'
+        
+        if 'why is' in q and ('important' in q or 'priority' in q):
+            return 'specific_capability_priority'
+        
+        if 'what skills am i missing' in q or 'what gaps do i have' in q or 'what do i still need' in q:
+            return 'missing_gaps'
+        
+        if 'what should i practice' in q or 'what skill should i practice' in q:
+            return 'practice_next'
+        
+        if 'what have i improved' in q or 'how have i improved' in q:
+            return 'improvements'
+        
+        if 'what proof do i need' in q or 'what should i submit as evidence' in q:
+            return 'missing_evidence'
+        
+        return 'general_fallback'
+    
+    def _handle_learn_today(self, state: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: "What should I learn today?""""
         next_action = self.calculate_next_action(state)
+        
+        if next_action and next_action['task']:
+            return {
+                'response': f'Your primary learning task for today is **Day {next_action["task"]["day"]}: {next_action["task"]["learningObjective"]}** ({next_action["task"]["expectedDuration"]}).\n\n' \
+                        f'**Task Title:** {next_action["task"]["capability"]}\n' \
+                        f'**Duration:** {next_action["task"]["expectedDuration"]}\n' \
+                        f'**Practice Activity:** {next_action["task"]["practiceActivity"]}\n' \
+                        f'**Deliverable:** {next_action["task"]["deliverable"]}\n\n' \
+                        f'**Why this task is relevant today:** {next_action["whyItMatters"]}\n\n' \
+                        'You can start this task directly in your Execution Plan or submit evidence once completed.',
+                'relatedCapability': next_action['task']['capability'],
+                'actionableTaskId': next_action['task']['id']
+            }
+        else:
+            return {
+                'response': 'You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+    
+    def _handle_next_with_why(self, state: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: "What should I work on next and why?""""
+        next_action = self.calculate_next_action(state)
+        
+        if next_action and next_action['task']:
+            # Look for recent evidence that caused state changes
+            recent_assessment = state['assessments'][0] if state['assessments'] else None
+            recent_evidence = state['evidenceHistory'][0] if state['evidenceHistory'] else None
+            contextual_reason = ''
+            
+            if recent_assessment and recent_evidence:
+                completed_capability = recent_assessment['capability']
+                prev_level = recent_assessment['previousLevel']
+                new_level = recent_assessment['newLevel']
+                prev_strength = recent_assessment['previousStrength']
+                new_strength = recent_assessment['newStrength']
+                
+                # Find the task status for this capability
+                task_status = None
+                for t in state['planTasks']:
+                    if t['capability'] == completed_capability:
+                        task_status = t['status']
+                        break
+                
+                if task_status == 'Verified':
+                    completed_gap = next((g for g in state['gaps'] if g['capability'] == completed_capability), None)
+                    
+                    # Find remaining highest gap
+                    remaining_gaps = [g for g in state['gaps'] if g['gap'] != 'None' and g['capability'] != completed_capability]
+                    priority_weight = {'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1}
+                    remaining_gaps.sort(key=lambda x: priority_weight[x['priority']], reverse=True)
+                    remaining_highest = remaining_gaps[0] if remaining_gaps else None
+                    
+                    gap_info = f'{completed_gap["gap"]}' if completed_gap else 'High'
+                    priority_info = f'{completed_gap["priority"]}' if completed_gap else 'Medium'
+                    remaining_priority = f'{remaining_highest["priority"]}' if remaining_highest else 'Medium'
+                    
+                    contextual_reason = f'Your **{completed_capability}** evidence was verified, which moved your capability from **{prev_level}** to **{new_level}** and improved evidence from **{prev_strength}** to **{new_strength}**. ' \
+                        f'This reduced that gap from **{gap_info}** to **{gap_info}** with **{priority_info}** priority. ' \
+                        f'Because that capability is now sufficiently demonstrated, the system adapted your path toward **{next_action["task"]["capability"]}**, which is currently the next important remaining gap ({remaining_priority} priority).'
+                else:
+                    contextual_reason = f'Your most recent evidence submission for **{completed_capability}** is being processed. ' \
+                        f'Your next priority action is **{next_action["task"]["capability"]}** based on your current highest unverified requirement ({next_action["reason"]}).'
+            else:
+                contextual_reason = f'Your next priority action is **{next_action["task"]["capability"]}** based on your current highest unverified requirement ({next_action["reason"]}).'
+            
+            return {
+                'response': f'Your next action is **Day {next_action["task"]["day"]}: {next_action["task"]["learningObjective"]}** ({next_action["task"]["expectedDuration"]}).\n\n' \
+                        f'**Contextual Reason:** {contextual_reason}\n\n' \
+                        f'**Practice Activity:** {next_action["task"]["practiceActivity"]}\n' \
+                        f'**Deliverable:** {next_action["task"]["deliverable"]}\n\n' \
+                        f'**Why this matters:** {next_action["whyItMatters"]}',
+                'relatedCapability': next_action['task']['capability'],
+                'actionableTaskId': next_action['task']['id']
+            }
+        else:
+            return {
+                'response': 'You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+    
+    def _handle_specific_capability_priority(self, state: Dict[str, Any], query: str, target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: "Why is Power BI a priority?""""
+        # Extract the specific capability mentioned
+        capabilities = [s['capability'].lower() for s in state['skills']]
+        mentioned_capability = next((cap for cap in capabilities if query.startswith(cap.split(' ')[0])), None)
+        
+        if mentioned_capability:
+            skill = next((s for s in state['skills'] if s['capability'].lower() == mentioned_capability.lower()), None)
+            gap = next((g for g in state['gaps'] if g['capability'].lower() == mentioned_capability.lower()), None)
+            
+            if skill and gap:
+                # Check if this capability is still a priority
+                if gap['gap'] == 'None' or gap['priority'] == 'Low':
+                    return {
+                        'response': f'**{skill["capability"]}** is currently **not a high priority** for your learning path.\n\n' \
+                                f'- **Target Standard:** The {target["title"]} role requires **{gap["targetRequirement"]}** level proficiency.\n' \
+                                f'- **Current Evidence:** Your profile has **{skill["evidenceStrength"]}** ({skill["currentLevel"]} level).\n' \
+                                f'- **Current Gap Status:** **{gap["gap"]}** with **{gap["priority"]}** priority.\n\n' \
+                                'Since your capability meets or approaches the target standard, this skill is no longer flagged as a critical gap. Focus on the remaining high-priority capabilities shown in your Gap Analysis.',
+                        'relatedCapability': skill['capability']
+                    }
+                else:
+                    return {
+                        'response': f'**{skill["capability"]}** is flagged with **{gap["priority"]} Priority** because:\n\n' \
+                                f'- **Target Standard:** The {target["title"]} role mandates **{gap["targetRequirement"]}** level proficiency.\n' \
+                                f'- **Current Evidence:** Your profile currently has **{skill["evidenceStrength"]}** ({skill["currentLevel"]} level).\n' \
+                                f'- **Current Gap Status:** **{gap["gap"]}** gap with **{gap["priority"]}** priority.\n' \
+                                f'- **Rationale:** {gap["reason"]}\n\n' \
+                                f'**Recommended Action:** {gap["recommendedAction"]}',
+                        'relatedCapability': skill['capability']
+                    }
+        
+        # Fallback to highest priority gap
         critical_gaps = [g for g in state['gaps'] if g['priority'] == 'Critical']
         high_gaps = [g for g in state['gaps'] if g['priority'] == 'High']
+        top_gap = critical_gaps[0] if critical_gaps else (high_gaps[0] if high_gaps else None)
+        
+        if top_gap:
+            return {
+                'response': f'Your highest current priority is **{top_gap["capability"]}** ({top_gap["priority"]} Priority). For a {target["title"]}, this capability is required at the **{top_gap["targetRequirement"]}** level. Your current profile has **{top_gap["currentEvidence"]}**. {top_gap["reason"]}',
+                'relatedCapability': top_gap['capability']
+            }
+        else:
+            return {
+                'response': f'Your capabilities currently align closely with the requirements for {target["title"]}. Focus on maintaining strong evidence across all core capabilities.',
+                'relatedCapability': None
+            }
+    
+    def _handle_missing_gaps(self, state: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: "What am I still missing for my target role?""""
+        missing = [g for g in state['gaps'] if g['gap'] != 'None']
+        
+        if missing:
+            list_str = '\n\n'.join([
+                f'• **{g["capability"]}**\n' \
+                f'  - Target Level: {g["targetRequirement"]}\n' \
+                f'  - Current Level: {g["currentLevel"]}\n' \
+                f'  - Evidence Strength: {g["currentEvidence"]}\n' \
+                f'  - Gap Severity: {g["gap"]}\n' \
+                f'  - Priority: {g["priority"]}\n' \
+                f'  - Reason: {g["reason"]}'
+                for g in missing
+            ])
+            
+            return {
+                'response': f'For your target role as a **{target["title"]}**, you have **{len(missing)} remaining capability gaps**:\n\n{list_str}\n\nReview the Gap Analysis tab to inspect detailed recommended actions for each.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+        else:
+            return {
+                'response': f'You have no unaddressed capability gaps! All core requirements for **{target["title"]}** have verified evidence in your profile.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+    
+    def _handle_practice_next(self, state: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: "What should I practice next?""""
+        next_action = self.calculate_next_action(state)
+        
+        if next_action and next_action['task']:
+            related_gap = next((g for g in state['gaps'] if g['capability'] == next_action['task']['capability']), None)
+            
+            return {
+                'response': f'Your next recommended practice activity is for **{next_action["task"]["capability"]}**:\n\n' \
+                        f'• **Related Capability:** {next_action["task"]["capability"]}\n' \
+                        f'• **Practice Activity:** {next_action["task"]["practiceActivity"]}\n' \
+                        f'• **Why this is the best practice activity:** This activity addresses your current {related_gap["gap"] if related_gap else "identified"} gap in {next_action["task"]["capability"]} ({related_gap["priority"] if related_gap else "High"} priority).\n' \
+                        f'• **Expected Deliverable:** {next_action["task"]["deliverable"]}\n' \
+                        f'• **Approximate Duration:** {next_action["task"]["expectedDuration"]}\n\n' \
+                        f'This practice is selected based on your highest unverified requirement: {next_action["reason"]}',
+                'relatedCapability': next_action['task']['capability'],
+                'actionableTaskId': next_action['task']['id']
+            }
+        else:
+            return {
+                'response': 'All active practice tasks have been completed. Submit new project evidence to initiate your next milestone reassessment.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+    
+    def _handle_improvements(self, state: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: "What did I improve this week?""""
+        recent_assessments = state['assessments'][:5] if state['assessments'] else []
+        recent_evidence = [e for e in state['evidenceHistory'] if e['status'] == 'Verified'][:5] if state['evidenceHistory'] else []
+        completed_tasks = [t for t in state['planTasks'] if t['status'] in ['Verified', 'Completed']]
+        
+        if recent_assessments or recent_evidence or completed_tasks:
+            improvements_list = ''
+            
+            # Show actual capability changes from assessments
+            if recent_assessments:
+                assessment_details = '\n\n'.join([
+                    f'• **{a["capability"]}**\n' \
+                    f'  - Capability Before: {a["previousLevel"]}\n' \
+                    f'  - Capability After: {a["newLevel"]}\n' \
+                    f'  - Evidence Before: {a["previousStrength"]}\n' \
+                    f'  - Evidence After: {a["newStrength"]}\n' \
+                    f'  - Verified On: {datetime.fromisoformat(a["date"]).strftime("%Y-%m-%d")}'
+                    for a in recent_assessments
+                ])
+                improvements_list += f'**Verified Capability Improvements:**\n{assessment_details}\n\n'
+            
+            # Show completed evidence/tasks
+            if recent_evidence:
+                evidence_details = '\n\n'.join([
+                    f'• **{e["capability"]}** - {e["taskTitle"]}\n' \
+                    f'  - Evidence Type: {e["evidenceType"]}\n' \
+                    f'  - Status: {e["status"]}\n' \
+                    f'  - Submitted: {datetime.fromisoformat(e["date"]).strftime("%Y-%m-%d")}'
+                    for e in recent_evidence
+                ])
+                improvements_list += f'**Recently Completed Evidence:**\n{evidence_details}\n\n'
+            
+            return {
+                'response': f'Here are your verified improvements based on actual assessment records:\n\n{improvements_list}' \
+                        f'**Summary:** You have completed {len(completed_tasks)} out of {len(state["planTasks"])} tasks with {len(recent_assessments)} verified capability improvements.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+        else:
+            return {
+                'response': 'There are no verified improvements recorded yet. Complete your first practice task and submit evidence to see your progress tracked here.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+    
+    def _handle_missing_evidence(self, state: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: "What evidence do I still need?""""
+        gaps_needing_evidence = [g for g in state['gaps'] if g['gap'] != 'None' and g['priority'] != 'Low']
+        
+        if gaps_needing_evidence:
+            evidence_list = '\n\n'.join([
+                f'• **{gap["capability"]}**\n' \
+                f'  - Current Evidence Strength: {next((s["evidenceStrength"] for s in state["skills"] if s["capability"] == gap["capability"]), "No evidence")}\n' \
+                f'  - Required Evidence: {gap["targetRequirement"]} level with {gap["importance"].lower()} importance\n' \
+                f'  - What to Submit: {gap["recommendedAction"]}\n' \
+                f'  - Related Task: {next((f"Day {t["day"]}: {t["learningObjective"]}" for t in state["planTasks"] if t["capability"] == gap["capability"] and t["status"] in ["Not started", "In progress"]), "No active task scheduled")}'
+                for gap in gaps_needing_evidence
+            ])
+            
+            return {
+                'response': f'Based on your current gaps, here is the evidence you still need to submit:\n\n{evidence_list}\n\n' \
+                        'You can submit evidence using GitHub links, project files, dashboard screenshots, or documented reports via the Evidence or Execution Plan tabs.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+        else:
+            return {
+                'response': 'You have submitted sufficient evidence for all high-priority capabilities! Focus on maintaining and strengthening your current verified competencies.',
+                'relatedCapability': None,
+                'actionableTaskId': None
+            }
+    
+    def _handle_general_fallback(self, state: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Handler: General fallback for unrecognized queries"""
+        next_action = self.calculate_next_action(state)
+        critical_gaps = [g for g in state['gaps'] if g['priority'] == 'Critical']
+        
+        return {
+            'response': f'Regarding **{state["profile"]["targetRole"] if state.get("profile") else "your target career"}**: you currently have **{len(critical_gaps)} critical gaps** and **{len([t for t in state["planTasks"] if t["status"] == "Verified"])} completed plan tasks**.\n\n' \
+                    f'Your current highest-priority action is **{next_action["task"]["learningObjective"] if next_action and next_action["task"] else "Complete initial profile"}** for **{next_action["task"]["capability"] if next_action and next_action["task"] else "Core competencies"}**.\n\n' \
+                    'Feel free to ask specific questions like:\n' \
+                    '• "What should I learn today?"\n' \
+                    '• "What should I work on next and why?"\n' \
+                    '• "Why is [specific capability] a priority?"\n' \
+                    '• "What am I still missing for my target role?"\n' \
+                    '• "What should I practice next?"\n' \
+                    '• "What did I improve this week?"\n' \
+                    '• "What evidence do I still need?"',
+            'relatedCapability': next_action['task']['capability'] if next_action and next_action['task'] else None,
+            'actionableTaskId': next_action['task']['id'] if next_action and next_action['task'] else None
+        }
+    
+    def answer_path_query(self, state: Dict[str, Any], raw_query: str) -> Dict[str, Any]:
+        """Natural language query processing engine grounded in learner's actual state"""
+        intent = self._classify_query_intent(raw_query)
         
         from app.data.roles_data import STANDARD_CAREER_TARGETS
         target = next((t for t in STANDARD_CAREER_TARGETS if t['id'] == state['selectedTargetId']), None)
         if not target:
             target = {'title': state['profile']['targetRole'] if state.get('profile') else 'Target Career'}
         
-        if 'learn today' in query or 'today' in query or 'what should i do' in query:
+        result = {}
+        
+        if intent == 'learn_today':
+            result = self._handle_learn_today(state, target)
+        elif intent == 'next_with_why':
+            result = self._handle_next_with_why(state, target)
+        elif intent == 'specific_capability_priority':
+            result = self._handle_specific_capability_priority(state, raw_query, target)
+        elif intent == 'missing_gaps':
+            result = self._handle_missing_gaps(state, target)
+        elif intent == 'practice_next':
+            result = self._handle_practice_next(state, target)
+        elif intent == 'improvements':
+            result = self._handle_improvements(state, target)
+        elif intent == 'missing_evidence':
+            result = self._handle_missing_evidence(state, target)
+        else:  # general_fallback
+            result = self._handle_general_fallback(state, target)
+        
+        return {
+            'id': f'conv-{int(datetime.utcnow().timestamp())}',
+            'learnerId': state['user']['id'],
+            'sender': 'system',
+            'query': raw_query,
+            'response': result['response'],
+            'timestamp': datetime.utcnow().isoformat(),
+            'relatedCapability': result.get('relatedCapability'),
+            'actionableTaskId': result.get('actionableTaskId')
+        }
             if next_action and next_action['task']:
                 related_capability = next_action['task']['capability']
                 actionable_task_id = next_action['task']['id']

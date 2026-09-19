@@ -582,148 +582,447 @@ export function submitAndReassessEvidence(
 }
 
 /**
- * Natural language query processing engine grounded in the learner's actual state
+ * Intent classification for natural language queries
  */
-export function answerPathQuery(state: LearnerState, rawQuery: string): PathConversationMessage {
-  const query = rawQuery.toLowerCase().trim();
-  let response = '';
-  let relatedCapability: string | undefined;
-  let actionableTaskId: string | undefined;
+type QueryIntent = 
+  | 'learn_today'
+  | 'next_with_why'
+  | 'specific_capability_priority'
+  | 'missing_gaps'
+  | 'practice_next'
+  | 'improvements'
+  | 'missing_evidence'
+  | 'general_fallback';
 
+function classifyQueryIntent(query: string): QueryIntent {
+  const q = query.toLowerCase().trim();
+  
+  // Priority order - check more specific intents first
+  
+  // "What should I learn today?" - distinct from other queries
+  if ((q.includes('learn') && q.includes('today')) || 
+      (q.includes('what should i do') && q.includes('today')) ||
+      (q.includes('today') && (q.includes('learn') || q.includes('study')))) {
+    return 'learn_today';
+  }
+  
+  // "What should I work on next and why?" - must include both "next" and "why"
+  if ((q.includes('next') && q.includes('why')) ||
+      (q.includes('why did my plan change')) ||
+      (q.includes('why should i do this next'))) {
+    return 'next_with_why';
+  }
+  
+  // "Why is Power BI a priority?" - specific capability analysis
+  if (q.includes('why') && (q.includes('priority') || q.includes('important'))) {
+    // Check if a specific capability is mentioned
+    const capabilities = ['power bi', 'sql', 'python', 'statistics', 'communication', 'modeling', 'typescript', 'react', 'api', 'terraform', 'figma'];
+    const mentionedCapability = capabilities.find(cap => q.includes(cap));
+    if (mentionedCapability) {
+      return 'specific_capability_priority';
+    }
+  }
+  
+  // "What am I still missing for my target role?" - gap analysis
+  if ((q.includes('missing') || q.includes('still need') || q.includes('gap')) &&
+      (q.includes('target') || q.includes('role') || q.includes('skills'))) {
+    return 'missing_gaps';
+  }
+  
+  // "What should I practice next?" - practice activity focus
+  if ((q.includes('practice') && q.includes('next')) ||
+      (q.includes('next practice')) ||
+      (q.includes('what should i practice'))) {
+    return 'practice_next';
+  }
+  
+  // "What did I improve this week?" - progress/assessment focus
+  if ((q.includes('improve') || q.includes('strengthen') || q.includes('progress')) &&
+      (q.includes('week') || q.includes('recently') || q.includes('have i'))) {
+    return 'improvements';
+  }
+  
+  // "What evidence do I still need?" - evidence requirements
+  if ((q.includes('evidence') || q.includes('proof') || q.includes('submit')) &&
+      (q.includes('still need') || q.includes('missing') || q.includes('require'))) {
+    return 'missing_evidence';
+  }
+  
+  // Natural language variations mapping
+  if (q.includes('what should i do today') || q.includes('what do i learn today')) {
+    return 'learn_today';
+  }
+  
+  if (q.includes('what is my next task') || q.includes('what should i do next')) {
+    return 'next_with_why';
+  }
+  
+  if (q.includes('why is') && (q.includes('important') || q.includes('priority'))) {
+    return 'specific_capability_priority';
+  }
+  
+  if (q.includes('what skills am i missing') || q.includes('what gaps do i have') || q.includes('what do i still need')) {
+    return 'missing_gaps';
+  }
+  
+  if (q.includes('what should i practice') || q.includes('what skill should i practice')) {
+    return 'practice_next';
+  }
+  
+  if (q.includes('what have i improved') || q.includes('how have i improved')) {
+    return 'improvements';
+  }
+  
+  if (q.includes('what proof do i need') || q.includes('what should i submit as evidence')) {
+    return 'missing_evidence';
+  }
+  
+  return 'general_fallback';
+}
+
+/**
+ * Handler: "What should I learn today?"
+ * Returns today's current primary learning task with details
+ */
+function handleLearnToday(state: LearnerState, target: any): { response: string; relatedCapability?: string; actionableTaskId?: string } {
   const nextAction = calculateNextAction(state);
-  const criticalGaps = state.gaps.filter(g => g.priority === 'Critical');
-  const highGaps = state.gaps.filter(g => g.priority === 'High');
-  const target = STANDARD_CAREER_TARGETS.find(t => t.id === state.selectedTargetId) || {
-    title: state.profile.targetRole || 'Target Career',
-  };
-
-  if (query.includes('learn today') || query.includes('today') || query.includes('what should i do')) {
-    if (nextAction && nextAction.task) {
-      relatedCapability = nextAction.task.capability;
-      actionableTaskId = nextAction.task.id;
-      response = `Your primary action today is **Day ${nextAction.task.day}: ${nextAction.task.learningObjective}** (${nextAction.task.expectedDuration}).\n\n` +
+  
+  if (nextAction && nextAction.task) {
+    return {
+      response: `Your primary learning task for today is **Day ${nextAction.task.day}: ${nextAction.task.learningObjective}** (${nextAction.task.expectedDuration}).\n\n` +
+        `**Task Title:** ${nextAction.task.capability}\n` +
+        `**Duration:** ${nextAction.task.expectedDuration}\n` +
         `**Practice Activity:** ${nextAction.task.practiceActivity}\n` +
         `**Deliverable:** ${nextAction.task.deliverable}\n\n` +
-        `**Why this matters:** ${nextAction.whyItMatters}\n\n` +
-        `You can start this task directly in your Execution Plan or submit evidence once completed.`;
-    } else {
-      response = `You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.`;
-    }
-  } else if (query.includes('next') && query.includes('why')) {
-    // Explain WHY this is the next action based on state changes
-    if (nextAction && nextAction.task) {
-      relatedCapability = nextAction.task.capability;
-      actionableTaskId = nextAction.task.id;
+        `**Why this task is relevant today:** ${nextAction.whyItMatters}\n\n` +
+        `You can start this task directly in your Execution Plan or submit evidence once completed.`,
+      relatedCapability: nextAction.task.capability,
+      actionableTaskId: nextAction.task.id,
+    };
+  } else {
+    return {
+      response: `You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.`,
+    };
+  }
+}
 
-      // Look for recent evidence that caused state changes
-      const recentAssessment = state.assessments[0];
-      const recentEvidence = state.evidenceHistory[0];
-      let contextualReason = '';
-
-      if (recentAssessment && recentEvidence) {
-        const completedCapability = recentAssessment.capability;
-        const prevLevel = recentAssessment.previousLevel;
-        const newLevel = recentAssessment.newLevel;
-        const prevStrength = recentAssessment.previousStrength;
-        const newStrength = recentAssessment.newStrength;
-        const taskStatus = state.planTasks.find(t => t.capability === completedCapability)?.status;
-
-        if (taskStatus === 'Verified') {
-          const completedGap = state.gaps.find(g => g.capability === completedCapability);
-          contextualReason = `Your **${completedCapability}** evidence was verified, which moved your capability from **${prevLevel}** to **${newLevel}** and improved evidence from **${prevStrength}** to **${newStrength}**. ` +
-            `This reduced that gap from **${completedGap?.gap || 'High'}** to **${completedGap?.gap || 'Medium'}** with **${completedGap?.priority || 'Medium'}** priority. ` +
-            `Since that task is now verified, the system has adapted your path to the next important remaining gap: **${nextAction.task.capability}**.`;
-        } else {
-          contextualReason = `Your most recent evidence submission for **${completedCapability}** is being processed. ` +
-            `Your next priority action is **${nextAction.task.capability}** based on your current highest unverified requirement (${nextAction.reason}).`;
-        }
+/**
+ * Handler: "What should I work on next and why?"
+ * Returns current next task with causal reasoning about state changes
+ */
+function handleNextWithWhy(state: LearnerState, target: any): { response: string; relatedCapability?: string; actionableTaskId?: string } {
+  const nextAction = calculateNextAction(state);
+  
+  if (nextAction && nextAction.task) {
+    // Look for recent evidence that caused state changes
+    const recentAssessment = state.assessments[0];
+    const recentEvidence = state.evidenceHistory[0];
+    let contextualReason = '';
+    
+    if (recentAssessment && recentEvidence) {
+      const completedCapability = recentAssessment.capability;
+      const prevLevel = recentAssessment.previousLevel;
+      const newLevel = recentAssessment.newLevel;
+      const prevStrength = recentAssessment.previousStrength;
+      const newStrength = recentAssessment.newStrength;
+      const taskStatus = state.planTasks.find(t => t.capability === completedCapability)?.status;
+      
+      if (taskStatus === 'Verified') {
+        const completedGap = state.gaps.find(g => g.capability === completedCapability);
+        const remainingHighestGap = state.gaps
+          .filter(g => g.gap !== 'None' && g.capability !== completedCapability)
+          .sort((a, b) => {
+            const priorityWeight: Record<string, number> = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+            return priorityWeight[b.priority] - priorityWeight[a.priority];
+          })[0];
+        
+        contextualReason = `Your **${completedCapability}** evidence was verified, which moved your capability from **${prevLevel}** to **${newLevel}** and improved evidence from **${prevStrength}** to **${newStrength}**. ` +
+          `This reduced that gap from **${completedGap?.gap || 'High'}** to **${completedGap?.gap || 'Medium'}** with **${completedGap?.priority || 'Medium'}** priority. ` +
+          `Because that capability is now sufficiently demonstrated, the system adapted your path toward **${nextAction.task.capability}**, which is currently the next important remaining gap (${remainingHighestGap?.priority || 'Medium'} priority).`;
       } else {
-        contextualReason = `Your next priority action is **${nextAction.task.capability}** based on your current highest unverified requirement (${nextAction.reason}).`;
+        contextualReason = `Your most recent evidence submission for **${completedCapability}** is being processed. ` +
+          `Your next priority action is **${nextAction.task.capability}** based on your current highest unverified requirement (${nextAction.reason}).`;
       }
-
-      response = `Your next action is **Day ${nextAction.task.day}: ${nextAction.task.learningObjective}** (${nextAction.task.expectedDuration}).\n\n` +
+    } else {
+      contextualReason = `Your next priority action is **${nextAction.task.capability}** based on your current highest unverified requirement (${nextAction.reason}).`;
+    }
+    
+    return {
+      response: `Your next action is **Day ${nextAction.task.day}: ${nextAction.task.learningObjective}** (${nextAction.task.expectedDuration}).\n\n` +
         `**Contextual Reason:** ${contextualReason}\n\n` +
         `**Practice Activity:** ${nextAction.task.practiceActivity}\n` +
         `**Deliverable:** ${nextAction.task.deliverable}\n\n` +
-        `**Why this matters:** ${nextAction.whyItMatters}`;
-    } else {
-      response = `You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.`;
-    }
-  } else if (query.includes('why') && (query.includes('priority') || query.includes('important'))) {
-    // Check if a specific capability was asked
-    const mentionedSkill = state.skills.find(s => query.includes(s.capability.toLowerCase().split(' ')[0].toLowerCase()));
-    if (mentionedSkill) {
-      const gap = state.gaps.find(g => g.capability === mentionedSkill.capability);
-      relatedCapability = mentionedSkill.capability;
-      response = `**${mentionedSkill.capability}** is flagged with **${gap?.priority || 'High'} Priority** because:\n\n` +
-        `- **Target Standard:** The ${target.title} role mandates **${gap?.targetRequirement || 'Intermediate'}** level proficiency.\n` +
-        `- **Current Evidence:** Your profile currently has **${mentionedSkill.evidenceStrength}** (${mentionedSkill.currentLevel} level).\n` +
-        `- **Rationale:** ${gap?.reason || 'Essential role capability'}\n\n` +
-        `**Recommended Action:** ${gap?.recommendedAction || 'Submit practical project evidence'}.`;
-    } else {
-      const topGap = criticalGaps[0] || highGaps[0];
-      if (topGap) {
-        relatedCapability = topGap.capability;
-        response = `Your highest current priority is **${topGap.capability}** (${topGap.priority} Priority). For a ${target.title}, this capability is required at the **${topGap.targetRequirement}** level. Your current profile has **${topGap.currentEvidence}**. ${topGap.reason}`;
+        `**Why this matters:** ${nextAction.whyItMatters}`,
+      relatedCapability: nextAction.task.capability,
+      actionableTaskId: nextAction.task.id,
+    };
+  } else {
+    return {
+      response: `You have completed all scheduled tasks in your current 7-day plan! You can review your verified competencies in the Progress view or generate an advanced continuation plan.`,
+    };
+  }
+}
+
+/**
+ * Handler: "Why is Power BI a priority?"
+ * Returns specific capability analysis with current state
+ */
+function handleSpecificCapabilityPriority(state: LearnerState, query: string, target: any): { response: string; relatedCapability?: string } {
+  // Extract the specific capability mentioned
+  const capabilities = state.skills.map(s => s.capability.toLowerCase());
+  const mentionedCapability = capabilities.find(cap => query.includes(cap.toLowerCase().split(' ')[0].toLowerCase()));
+  
+  if (mentionedCapability) {
+    const skill = state.skills.find(s => s.capability.toLowerCase() === mentionedCapability.toLowerCase());
+    const gap = state.gaps.find(g => g.capability.toLowerCase() === mentionedCapability.toLowerCase());
+    
+    if (skill && gap) {
+      // Check if this capability is still a priority
+      if (gap.gap === 'None' || gap.priority === 'Low') {
+        return {
+          response: `**${skill.capability}** is currently **not a high priority** for your learning path.\n\n` +
+            `- **Target Standard:** The ${target.title} role requires **${gap.targetRequirement}** level proficiency.\n` +
+            `- **Current Evidence:** Your profile has **${skill.evidenceStrength}** (${skill.currentLevel} level).\n` +
+            `- **Current Gap Status:** **${gap.gap}** with **${gap.priority}** priority.\n\n` +
+            `Since your capability meets or approaches the target standard, this skill is no longer flagged as a critical gap. Focus on the remaining high-priority capabilities shown in your Gap Analysis.`,
+          relatedCapability: skill.capability,
+        };
       } else {
-        response = `Your capabilities currently align closely with the requirements for ${target.title}. Focus on maintaining strong evidence across all core capabilities.`;
+        return {
+          response: `**${skill.capability}** is flagged with **${gap.priority} Priority** because:\n\n` +
+            `- **Target Standard:** The ${target.title} role mandates **${gap.targetRequirement}** level proficiency.\n` +
+            `- **Current Evidence:** Your profile currently has **${skill.evidenceStrength}** (${skill.currentLevel} level).\n` +
+            `- **Current Gap Status:** **${gap.gap}** gap with **${gap.priority}** priority.\n` +
+            `- **Rationale:** ${gap.reason}\n\n` +
+            `**Recommended Action:** ${gap.recommendedAction}`,
+          relatedCapability: skill.capability,
+        };
       }
     }
-  } else if (query.includes('missing') || query.includes('still need') || query.includes('gap')) {
-    const missing = state.gaps.filter(g => g.gap !== 'None');
-    if (missing.length > 0) {
-      const listStr = missing.map(g => `• **${g.capability}** (${g.priority} Priority): Target requires ${g.targetRequirement}, currently ${g.currentEvidence}. Reason: ${g.reason}`).join('\n\n');
-      response = `For your target role as a **${target.title}**, you have **${missing.length} remaining capability gaps**:\n\n${listStr}\n\nReview the Gap Analysis tab to inspect detailed recommended actions for each.`;
-    } else {
-      response = `You have no unaddressed capability gaps! All core requirements for **${target.title}** have verified evidence in your profile.`;
-    }
-  } else if (query.includes('practice next') || query.includes('next practice') || query.includes('next')) {
-    if (nextAction && nextAction.task) {
-      relatedCapability = nextAction.task.capability;
-      actionableTaskId = nextAction.task.id;
-      response = `Your next recommended practice is for **${nextAction.task.capability}**:\n\n` +
-        `• **Objective:** ${nextAction.task.learningObjective}\n` +
-        `• **Activity:** ${nextAction.task.practiceActivity}\n` +
-        `• **Expected Time:** ${nextAction.task.expectedDuration}\n` +
-        `• **Required Deliverable:** ${nextAction.task.deliverable}\n\n` +
-        `Calculated based on your highest unverified requirement: ${nextAction.reason}`;
-    } else {
-      response = `All active practice tasks have been completed. Submit new project evidence to initiate your next milestone reassessment.`;
-    }
-  } else if (query.includes('improve') || query.includes('strengthen') || query.includes('progress')) {
-    const strengthened = state.progress.recentlyStrengthened;
-    const completedTasks = state.planTasks.filter(t => t.status === 'Verified' || t.status === 'Completed');
-    if (strengthened.length > 0 || completedTasks.length > 0) {
-      const skillsStr = strengthened.length > 0 ? strengthened.join(', ') : 'initial capability verifications';
-      response = `Here is your verified progress summary:\n\n` +
-        `• **Strengthened Capabilities:** ${skillsStr}\n` +
-        `• **Completed Activities:** ${completedTasks.length} out of ${state.planTasks.length} 7-day tasks verified\n` +
-        `• **Learning Hours Completed:** ${state.progress.hoursCompletedThisWeek.toFixed(1)} hrs toward your ${state.progress.weeklyTargetHours} hr weekly goal\n` +
-        `• **Submitted Artifacts:** ${state.evidenceHistory.length} pieces of verified evidence on file\n\n` +
-        `Your next target milestone: ${state.progress.nextMilestone}`;
-    } else {
-      response = `You are at the beginning of your plan! Upload documents, complete Day 1 practice, and submit your first deliverable to log verified improvements.`;
-    }
-  } else if (query.includes('evidence') || query.includes('submit')) {
-    const needingEvidence = state.progress.capabilitiesNeedingEvidence;
-    response = `The capabilities currently requiring evidence submission are:\n\n` +
-      needingEvidence.map(c => `• **${c}**`).join('\n') +
-      `\n\nYou can submit evidence using GitHub links, project files, dashboard screenshots, or documented reports via the Evidence or Execution Plan tabs.`;
-  } else {
-    // Dynamic contextual fallback
-    response = `Regarding **${state.profile.targetRole || 'your target career'}**: you currently have **${state.gaps.filter(g => g.priority === 'Critical').length} critical gaps** and **${state.planTasks.filter(t => t.status === 'Verified').length} completed plan tasks**.\n\n` +
-      `Your current highest-priority action is **${nextAction?.task.learningObjective || 'Complete initial profile'}** for **${nextAction?.task.capability || 'Core competencies'}**.\n\n` +
-      `Feel free to ask specific questions like: "What should I learn today?", "Why is a specific capability a priority?", or "What am I still missing for my target role?"`;
   }
+  
+  // Fallback to highest priority gap
+  const criticalGaps = state.gaps.filter(g => g.priority === 'Critical');
+  const highGaps = state.gaps.filter(g => g.priority === 'High');
+  const topGap = criticalGaps[0] || highGaps[0];
+  
+  if (topGap) {
+    return {
+      response: `Your highest current priority is **${topGap.capability}** (${topGap.priority} Priority). For a ${target.title}, this capability is required at the **${topGap.targetRequirement}** level. Your current profile has **${topGap.currentEvidence}**. ${topGap.reason}`,
+      relatedCapability: topGap.capability,
+    };
+  } else {
+    return {
+      response: `Your capabilities currently align closely with the requirements for ${target.title}. Focus on maintaining strong evidence across all core capabilities.`,
+    };
+  }
+}
 
+/**
+ * Handler: "What am I still missing for my target role?"
+ * Returns current gap summary for all meaningful remaining gaps
+ */
+function handleMissingGaps(state: LearnerState, target: any): { response: string } {
+  const missing = state.gaps.filter(g => g.gap !== 'None');
+  
+  if (missing.length > 0) {
+    const listStr = missing.map(g => 
+      `• **${g.capability}**\n` +
+      `  - Target Level: ${g.targetRequirement}\n` +
+      `  - Current Level: ${g.currentLevel}\n` +
+      `  - Evidence Strength: ${g.currentEvidence}\n` +
+      `  - Gap Severity: ${g.gap}\n` +
+      `  - Priority: ${g.priority}\n` +
+      `  - Reason: ${g.reason}`
+    ).join('\n\n');
+    
+    return {
+      response: `For your target role as a **${target.title}**, you have **${missing.length} remaining capability gaps**:\n\n${listStr}\n\nReview the Gap Analysis tab to inspect detailed recommended actions for each.`,
+    };
+  } else {
+    return {
+      response: `You have no unaddressed capability gaps! All core requirements for **${target.title}** have verified evidence in your profile.`,
+    };
+  }
+}
+
+/**
+ * Handler: "What should I practice next?"
+ * Returns next practical activity based on current weakness/gap
+ */
+function handlePracticeNext(state: LearnerState, target: any): { response: string; relatedCapability?: string; actionableTaskId?: string } {
+  const nextAction = calculateNextAction(state);
+  
+  if (nextAction && nextAction.task) {
+    const relatedGap = state.gaps.find(g => g.capability === nextAction.task.capability);
+    
+    return {
+      response: `Your next recommended practice activity is for **${nextAction.task.capability}**:\n\n` +
+        `• **Related Capability:** ${nextAction.task.capability}\n` +
+        `• **Practice Activity:** ${nextAction.task.practiceActivity}\n` +
+        `• **Why this is the best practice activity:** This activity addresses your current ${relatedGap?.gap || 'identified'} gap in ${nextAction.task.capability} (${relatedGap?.priority || 'High'} priority).\n` +
+        `• **Expected Deliverable:** ${nextAction.task.deliverable}\n` +
+        `• **Approximate Duration:** ${nextAction.task.expectedDuration}\n\n` +
+        `This practice is selected based on your highest unverified requirement: ${nextAction.reason}`,
+      relatedCapability: nextAction.task.capability,
+      actionableTaskId: nextAction.task.id,
+    };
+  } else {
+    return {
+      response: `All active practice tasks have been completed. Submit new project evidence to initiate your next milestone reassessment.`,
+    };
+  }
+}
+
+/**
+ * Handler: "What did I improve this week?"
+ * Returns ONLY actual improvements found in learner records
+ */
+function handleImprovements(state: LearnerState, target: any): { response: string } {
+  const recentAssessments = state.assessments.slice(0, 5); // Last 5 assessments
+  const recentEvidence = state.evidenceHistory.filter(e => e.status === 'Verified').slice(0, 5);
+  const completedTasks = state.planTasks.filter(t => t.status === 'Verified' || t.status === 'Completed');
+  
+  if (recentAssessments.length > 0 || recentEvidence.length > 0 || completedTasks.length > 0) {
+    let improvementsList = '';
+    
+    // Show actual capability changes from assessments
+    if (recentAssessments.length > 0) {
+      const assessmentDetails = recentAssessments.map(a => 
+        `• **${a.capability}**\n` +
+        `  - Capability Before: ${a.previousLevel}\n` +
+        `  - Capability After: ${a.newLevel}\n` +
+        `  - Evidence Before: ${a.previousStrength}\n` +
+        `  - Evidence After: ${a.newStrength}\n` +
+        `  - Verified On: ${new Date(a.date).toLocaleDateString()}`
+      ).join('\n\n');
+      
+      improvementsList += `**Verified Capability Improvements:**\n${assessmentDetails}\n\n`;
+    }
+    
+    // Show completed evidence/tasks
+    if (recentEvidence.length > 0) {
+      const evidenceDetails = recentEvidence.map(e => 
+        `• **${e.capability}** - ${e.taskTitle}\n` +
+        `  - Evidence Type: ${e.evidenceType}\n` +
+        `  - Status: ${e.status}\n` +
+        `  - Submitted: ${new Date(e.date).toLocaleDateString()}`
+      ).join('\n\n');
+      
+      improvementsList += `**Recently Completed Evidence:**\n${evidenceDetails}\n\n`;
+    }
+    
+    return {
+      response: `Here are your verified improvements based on actual assessment records:\n\n${improvementsList}` +
+        `**Summary:** You have completed ${completedTasks.length} out of ${state.planTasks.length} tasks with ${recentAssessments.length} verified capability improvements.`,
+    };
+  } else {
+    return {
+      response: `There are no verified improvements recorded yet. Complete your first practice task and submit evidence to see your progress tracked here.`,
+    };
+  }
+}
+
+/**
+ * Handler: "What evidence do I still need?"
+ * Returns missing/insufficient evidence based on current gaps
+ */
+function handleMissingEvidence(state: LearnerState, target: any): { response: string } {
+  const gapsNeedingEvidence = state.gaps.filter(g => g.gap !== 'None' && g.priority !== 'Low');
+  
+  if (gapsNeedingEvidence.length > 0) {
+    const evidenceList = gapsNeedingEvidence.map(gap => {
+      const relatedTask = state.planTasks.find(t => t.capability === gap.capability && (t.status === 'Not started' || t.status === 'In progress'));
+      const skill = state.skills.find(s => s.capability === gap.capability);
+      
+      return `• **${gap.capability}**\n` +
+        `  - Current Evidence Strength: ${skill?.evidenceStrength || 'No evidence'}\n` +
+        `  - Required Evidence: ${gap.targetRequirement} level with ${gap.importance.toLowerCase()} importance\n` +
+        `  - What to Submit: ${gap.recommendedAction}\n` +
+        `  - Related Task: ${relatedTask ? `Day ${relatedTask.day}: ${relatedTask.learningObjective}` : 'No active task scheduled'}`;
+    }).join('\n\n');
+    
+    return {
+      response: `Based on your current gaps, here is the evidence you still need to submit:\n\n${evidenceList}\n\n` +
+        `You can submit evidence using GitHub links, project files, dashboard screenshots, or documented reports via the Evidence or Execution Plan tabs.`,
+    };
+  } else {
+    return {
+      response: `You have submitted sufficient evidence for all high-priority capabilities! Focus on maintaining and strengthening your current verified competencies.`,
+    };
+  }
+}
+
+/**
+ * Handler: General fallback for unrecognized queries
+ */
+function handleGeneralFallback(state: LearnerState, target: any): { response: string; relatedCapability?: string; actionableTaskId?: string } {
+  const nextAction = calculateNextAction(state);
+  const criticalGaps = state.gaps.filter(g => g.priority === 'Critical');
+  
+  return {
+    response: `Regarding **${state.profile.targetRole || 'your target career'}**: you currently have **${criticalGaps.length} critical gaps** and **${state.planTasks.filter(t => t.status === 'Verified').length} completed plan tasks**.\n\n` +
+      `Your current highest-priority action is **${nextAction?.task.learningObjective || 'Complete initial profile'}** for **${nextAction?.task.capability || 'Core competencies'}**.\n\n` +
+      `Feel free to ask specific questions like:\n` +
+      `• "What should I learn today?"\n` +
+      `• "What should I work on next and why?"\n` +
+      `• "Why is [specific capability] a priority?"\n` +
+      `• "What am I still missing for my target role?"\n` +
+      `• "What should I practice next?"\n` +
+      `• "What did I improve this week?"\n` +
+      `• "What evidence do I still need?"`,
+    relatedCapability: nextAction?.task?.capability,
+    actionableTaskId: nextAction?.task?.id,
+  };
+}
+
+/**
+ * Natural language query processing engine grounded in the learner's actual state
+ */
+export function answerPathQuery(state: LearnerState, rawQuery: string): PathConversationMessage {
+  const intent = classifyQueryIntent(rawQuery);
+  const target = STANDARD_CAREER_TARGETS.find(t => t.id === state.selectedTargetId) || {
+    title: state.profile.targetRole || 'Target Career',
+  };
+  
+  let result: { response: string; relatedCapability?: string; actionableTaskId?: string };
+  
+  switch (intent) {
+    case 'learn_today':
+      result = handleLearnToday(state, target);
+      break;
+    case 'next_with_why':
+      result = handleNextWithWhy(state, target);
+      break;
+    case 'specific_capability_priority':
+      result = handleSpecificCapabilityPriority(state, rawQuery, target);
+      break;
+    case 'missing_gaps':
+      result = handleMissingGaps(state, target);
+      break;
+    case 'practice_next':
+      result = handlePracticeNext(state, target);
+      break;
+    case 'improvements':
+      result = handleImprovements(state, target);
+      break;
+    case 'missing_evidence':
+      result = handleMissingEvidence(state, target);
+      break;
+    case 'general_fallback':
+    default:
+      result = handleGeneralFallback(state, target);
+      break;
+  }
+  
   return {
     id: 'conv-' + Date.now(),
     learnerId: state.user.id,
     sender: 'system',
     query: rawQuery,
-    response,
+    response: result.response,
     timestamp: new Date().toISOString(),
-    relatedCapability,
-    actionableTaskId,
+    relatedCapability: result.relatedCapability,
+    actionableTaskId: result.actionableTaskId,
   };
 }

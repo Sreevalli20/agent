@@ -182,9 +182,15 @@ export const AskYourPathView: React.FC<AskYourPathViewProps> = ({ state, onNavig
 
               {/* Stored Context Response */}
               <div className="space-y-3 pl-8 text-xs text-slate-700 leading-relaxed">
-                <div className="whitespace-pre-line prose prose-slate max-w-none text-xs">
-                  {conv.response}
-                </div>
+                <div 
+                  className="prose prose-slate max-w-none text-xs"
+                  dangerouslySetInnerHTML={{ 
+                    __html: conv.response
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                      .replace(/\n/g, '<br/>')
+                  }} 
+                />
 
                 {/* Direct Action Deep Link */}
                 <div className="pt-2 flex flex-wrap items-center gap-3">
