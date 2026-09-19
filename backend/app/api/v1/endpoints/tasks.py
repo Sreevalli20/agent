@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from app.db.session import get_db
 from app.schemas.learner import PlanTask as PlanTaskSchema
 from app.services.learner_service import LearnerService
@@ -7,14 +8,19 @@ from app.services.learner_service import LearnerService
 router = APIRouter()
 
 
+class TaskStatusUpdate(BaseModel):
+    status: str
+
+
 @router.patch("/{task_id}", response_model=PlanTaskSchema)
 def update_task_status(
     task_id: str,
-    status: str,
+    status_update: TaskStatusUpdate,
     db: Session = Depends(get_db)
 ):
     """Update task status"""
     learner_service = LearnerService(db)
+    status = status_update.status
     
     # Find the learner that owns this task
     # In a real system, we'd query by task_id directly

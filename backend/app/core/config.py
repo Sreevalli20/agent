@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "EduPath"
     
     # CORS Configuration
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://edupath-silk.vercel.app"
     
     @property
     def cors_origins_list(self) -> List[str]:
