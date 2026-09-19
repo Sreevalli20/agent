@@ -50,12 +50,20 @@ def get_demo_alex_state(db: Session = Depends(get_db)):
     
     # Always ensure comprehensive demo data is seeded
     try:
+        from cleanup_demo_learners import cleanup_duplicate_alex
         from seed_demo_data import seed_demo_alex
+        cleanup_duplicate_alex()
         seed_demo_alex()
     except Exception as e:
         print(f"Warning: Could not seed demo data: {e}")
+        import traceback
+        traceback.print_exc()
     
-    return service.get_learner_state("demo-learner-alex").model_dump()
+    # Get the seeded state
+    state = service.get_learner_state("demo-learner-alex")
+    if not state:
+        raise HTTPException(status_code=500, detail="Failed to seed or retrieve demo learner")
+    return state.model_dump()
 
 
 @router.post("/demo/alex/seed")

@@ -21,23 +21,50 @@ def seed_demo_alex():
         
         if existing_alex:
             print("Alex Chen demo learner already exists. Updating with comprehensive demo data...")
-            learner_id = existing_alex.id
-            
-            # Delete existing related data for clean update
-            db.query(PathConversationMessage).filter(PathConversationMessage.learner_id == learner_id).delete()
-            db.query(LearnerProgress).filter(LearnerProgress.learner_id == learner_id).delete()
-            db.query(AssessmentRecord).filter(AssessmentRecord.learner_id == learner_id).delete()
-            db.query(EvidenceRecord).filter(EvidenceRecord.learner_id == learner_id).delete()
-            db.query(PlanTask).filter(PlanTask.learner_id == learner_id).delete()
-            db.query(SkillGap).filter(SkillGap.learner_id == learner_id).delete()
-            db.query(SkillCapability).filter(SkillCapability.learner_id == learner_id).delete()
-            db.query(DocumentUpload).filter(DocumentUpload.learner_id == learner_id).delete()
-            db.query(Profile).filter(Profile.learner_id == learner_id).delete()
-            
-            # Update user
-            existing_alex.name = "Alex Chen"
-            existing_alex.is_demo = True
-            db.flush()
+            # If the existing learner has a different ID, delete it and recreate with the correct ID
+            if existing_alex.id != "demo-learner-alex":
+                print(f"Existing Alex has wrong ID ({existing_alex.id}), recreating with correct ID...")
+                # Delete all related data for the wrong ID
+                db.query(PathConversationMessage).filter(PathConversationMessage.learner_id == existing_alex.id).delete()
+                db.query(LearnerProgress).filter(LearnerProgress.learner_id == existing_alex.id).delete()
+                db.query(AssessmentRecord).filter(AssessmentRecord.learner_id == existing_alex.id).delete()
+                db.query(EvidenceRecord).filter(EvidenceRecord.learner_id == existing_alex.id).delete()
+                db.query(PlanTask).filter(PlanTask.learner_id == existing_alex.id).delete()
+                db.query(SkillGap).filter(SkillGap.learner_id == existing_alex.id).delete()
+                db.query(SkillCapability).filter(SkillCapability.learner_id == existing_alex.id).delete()
+                db.query(DocumentUpload).filter(DocumentUpload.learner_id == existing_alex.id).delete()
+                db.query(Profile).filter(Profile.learner_id == existing_alex.id).delete()
+                db.delete(existing_alex)
+                db.commit()
+                
+                # Create with correct ID
+                learner_id = "demo-learner-alex"
+                alex_user = User(
+                    id=learner_id,
+                    name="Alex Chen",
+                    email="alex.chen@example.edu",
+                    is_demo=True,
+                    created_at=datetime.fromisoformat("2026-09-12T10:00:00Z")
+                )
+                db.add(alex_user)
+                db.flush()
+            else:
+                learner_id = existing_alex.id
+                # Delete existing related data for clean update
+                db.query(PathConversationMessage).filter(PathConversationMessage.learner_id == learner_id).delete()
+                db.query(LearnerProgress).filter(LearnerProgress.learner_id == learner_id).delete()
+                db.query(AssessmentRecord).filter(AssessmentRecord.learner_id == learner_id).delete()
+                db.query(EvidenceRecord).filter(EvidenceRecord.learner_id == learner_id).delete()
+                db.query(PlanTask).filter(PlanTask.learner_id == learner_id).delete()
+                db.query(SkillGap).filter(SkillGap.learner_id == learner_id).delete()
+                db.query(SkillCapability).filter(SkillCapability.learner_id == learner_id).delete()
+                db.query(DocumentUpload).filter(DocumentUpload.learner_id == learner_id).delete()
+                db.query(Profile).filter(Profile.learner_id == learner_id).delete()
+                
+                # Update user
+                existing_alex.name = "Alex Chen"
+                existing_alex.is_demo = True
+                db.flush()
         else:
             print("Creating new Alex Chen demo learner...")
             learner_id = "demo-learner-alex"
