@@ -19,12 +19,20 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting EduPath Backend...")
     try:
-        # Create database tables
+        # Import all models to ensure they're registered with SQLAlchemy
+        from app.models.learner import (
+            User, Profile, DocumentUpload, SkillCapability, 
+            SkillGap, PlanTask, EvidenceRecord, AssessmentRecord,
+            LearnerProgress, PathConversationMessage
+        )
         from app.db.base import Base, engine
+        # Create database tables
         Base.metadata.create_all(bind=engine)
         print("Database tables created/verified!")
     except Exception as e:
         print(f"Error creating database tables: {e}")
+        import traceback
+        traceback.print_exc()
     yield
     # Shutdown
     print("Shutting down EduPath Backend...")

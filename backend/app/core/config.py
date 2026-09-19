@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./edupath.db")
     
+    # Ensure PostgreSQL URLs are properly formatted for SQLAlchemy
+    @property
+    def SQLALCHEMY_DATABASE_URL(self) -> str:
+        """Format database URL for SQLAlchemy"""
+        if self.DATABASE_URL and self.DATABASE_URL.startswith("postgres://"):
+            # Convert postgres:// to postgresql:// for SQLAlchemy
+            return self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        return self.DATABASE_URL
+    
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
     ALGORITHM: str = "HS256"
