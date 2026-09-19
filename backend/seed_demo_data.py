@@ -19,7 +19,7 @@ def seed_demo_alex():
         # Check if Alex already exists
         existing_alex = db.query(User).filter(User.email == "alex.chen@example.edu").first()
         if existing_alex:
-            print("Alex Chen demo learner already exists. Skipping seed.")
+            print("Alex Chen demo learner already exists in database. Skipping seed.")
             return
         
         # Create User
@@ -488,11 +488,11 @@ def seed_demo_alex():
         db.add(conversation)
         
         db.commit()
-        print("✅ Alex Chen demo learner data seeded successfully!")
+        print("Alex Chen demo learner data seeded successfully!")
         
     except Exception as e:
         db.rollback()
-        print(f"❌ Error seeding demo data: {e}")
+        print(f"Error seeding demo data: {e}")
         import traceback
         traceback.print_exc()
     finally:

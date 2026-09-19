@@ -43,6 +43,48 @@ def get_all_learners(
     return service.get_all_learners(skip=skip, limit=limit)
 
 
+@router.get("/demo/alex/state")
+def get_demo_alex_state(db: Session = Depends(get_db)):
+    """Get or create demo Alex Chen learner state"""
+    service = LearnerService(db)
+    
+    # Try to get existing demo learner
+    demo_alex = service.get_learner("demo-learner-alex")
+    
+    if not demo_alex:
+        # Create demo learner if doesn't exist
+        from app.schemas.learner import UserCreate
+        demo_user = service.create_learner(UserCreate(
+            name="Alex Chen",
+            email="alex.chen@example.edu",
+            is_demo=True
+        ))
+        return service.get_learner_state(demo_user.id).model_dump()
+    
+    return service.get_learner_state("demo-learner-alex").model_dump()
+
+
+@router.get("/demo/marcus/state")
+def get_demo_marcus_state(db: Session = Depends(get_db)):
+    """Get or create demo Marcus Vance learner state"""
+    service = LearnerService(db)
+    
+    # Try to get existing demo learner
+    demo_marcus = service.get_learner("demo-learner-marcus")
+    
+    if not demo_marcus:
+        # Create demo learner if doesn't exist
+        from app.schemas.learner import UserCreate
+        demo_user = service.create_learner(UserCreate(
+            name="Marcus Vance",
+            email="marcus.vance@example.edu",
+            is_demo=True
+        ))
+        return service.get_learner_state(demo_user.id).model_dump()
+    
+    return service.get_learner_state("demo-learner-marcus").model_dump()
+
+
 @router.delete("/{learner_id}")
 def delete_learner(
     learner_id: str,
