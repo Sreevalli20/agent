@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.learner import LearnerProgress
+from app.schemas.learner import LearnerProgress as LearnerProgressSchema
 from app.services.learner_service import LearnerService
 from app.services.evaluation_service import EvaluationService
 
 router = APIRouter()
 
 
-@router.get("/{learner_id}/progress", response_model=LearnerProgress)
+@router.get("/{learner_id}/progress", response_model=LearnerProgressSchema)
 def get_dashboard_progress(
     learner_id: str,
     db: Session = Depends(get_db)

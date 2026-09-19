@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.db.session import get_db
-from app.schemas.learner import DocumentUpload, DocumentUploadCreate
+from app.schemas.learner import DocumentUpload as DocumentUploadSchema, DocumentUploadCreate
 from app.services.learner_service import LearnerService
 
 router = APIRouter()
 
 
-@router.post("/{learner_id}", response_model=DocumentUpload)
+@router.post("/{learner_id}", response_model=DocumentUploadSchema)
 def upload_document(
     learner_id: str,
     document_data: DocumentUploadCreate,
@@ -23,10 +23,10 @@ def upload_document(
     # Add new document to existing documents
     updated_documents = state.documents + [document_data]
     
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
     user = service.get_learner(learner_id)
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=state.profile,
         documents=updated_documents,
         skills=state.skills,
@@ -35,7 +35,7 @@ def upload_document(
         plan_tasks=state.plan_tasks,
         evidence_history=state.evidence_history,
         assessments=state.assessments,
-        progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
+        progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
         conversations=state.conversations
     )
     
@@ -43,7 +43,7 @@ def upload_document(
     return updated.documents[-1]  # Return the newly added document
 
 
-@router.get("/{learner_id}", response_model=List[DocumentUpload])
+@router.get("/{learner_id}", response_model=List[DocumentUploadSchema])
 def get_documents(
     learner_id: str,
     db: Session = Depends(get_db)
@@ -71,10 +71,10 @@ def delete_document(
     # Remove document from list
     updated_documents = [doc for doc in state.documents if doc.id != document_id]
     
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
     user = service.get_learner(learner_id)
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=state.profile,
         documents=updated_documents,
         skills=state.skills,
@@ -83,7 +83,7 @@ def delete_document(
         plan_tasks=state.plan_tasks,
         evidence_history=state.evidence_history,
         assessments=state.assessments,
-        progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
+        progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
         conversations=state.conversations
     )
     

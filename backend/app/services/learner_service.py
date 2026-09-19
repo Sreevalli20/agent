@@ -2,12 +2,12 @@ import json
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.schemas.learner import (
-    User, UserCreate, LearnerState, LearnerStateCreate,
-    Profile, ProfileCreate, DocumentUpload, DocumentUploadCreate,
-    SkillCapability, SkillCapabilityCreate, SkillGap, SkillGapCreate,
-    PlanTask, PlanTaskCreate, EvidenceRecord, EvidenceRecordCreate,
-    AssessmentRecord, AssessmentRecordCreate, LearnerProgress, LearnerProgressCreate,
-    PathConversationMessage, PathConversationMessageCreate
+    User as UserSchema, UserCreate, LearnerState, LearnerStateCreate,
+    Profile as ProfileSchema, ProfileCreate, DocumentUpload as DocumentUploadSchema, DocumentUploadCreate,
+    SkillCapability as SkillCapabilitySchema, SkillCapabilityCreate, SkillGap as SkillGapSchema, SkillGapCreate,
+    PlanTask as PlanTaskSchema, PlanTaskCreate, EvidenceRecord as EvidenceRecordSchema, EvidenceRecordCreate,
+    AssessmentRecord as AssessmentRecordSchema, AssessmentRecordCreate, LearnerProgress as LearnerProgressSchema, LearnerProgressCreate,
+    PathConversationMessage as PathConversationMessageSchema, PathConversationMessageCreate
 )
 from app.models.learner import (
     User as UserModel, Profile as ProfileModel, DocumentUpload as DocumentModel,
@@ -32,7 +32,7 @@ class LearnerService:
         """Convert list to JSON string for database"""
         return json.dumps(data) if data else "[]"
     
-    def create_learner(self, user_data: UserCreate) -> User:
+    def create_learner(self, user_data: UserCreate) -> UserSchema:
         """Create a new learner with default state"""
         db_user = UserModel(
             name=user_data.name,
@@ -74,19 +74,19 @@ class LearnerService:
         self.db.commit()
         self.db.refresh(db_user)
         
-        return User.model_validate(db_user)
+        return UserSchema.model_validate(db_user)
     
-    def get_learner(self, learner_id: str) -> Optional[User]:
+    def get_learner(self, learner_id: str) -> Optional[UserSchema]:
         """Get learner by ID"""
         db_user = self.db.query(UserModel).filter(UserModel.id == learner_id).first()
         if not db_user:
             return None
-        return User.model_validate(db_user)
+        return UserSchema.model_validate(db_user)
     
-    def get_all_learners(self, skip: int = 0, limit: int = 100) -> List[User]:
+    def get_all_learners(self, skip: int = 0, limit: int = 100) -> List[UserSchema]:
         """Get all learners"""
         db_users = self.db.query(UserModel).offset(skip).limit(limit).all()
-        return [User.model_validate(user) for user in db_users]
+        return [UserSchema.model_validate(user) for user in db_users]
     
     def delete_learner(self, learner_id: str) -> bool:
         """Delete learner and all related data"""
@@ -126,17 +126,17 @@ class LearnerService:
         conversations = self.db.query(ConversationModel).filter(ConversationModel.learner_id == learner_id).all()
         
         return LearnerState(
-            user=User.model_validate(db_user),
-            profile=Profile.model_validate(profile) if profile else None,
-            documents=[DocumentUpload.model_validate(doc) for doc in documents],
-            skills=[SkillCapability.model_validate(skill) for skill in skills],
+            user=UserSchema.model_validate(db_user),
+            profile=ProfileSchema.model_validate(profile) if profile else None,
+            documents=[DocumentUploadSchema.model_validate(doc) for doc in documents],
+            skills=[SkillCapabilitySchema.model_validate(skill) for skill in skills],
             selected_target_id=profile.target_role.lower().replace(" ", "-") if profile else "data-analyst",
-            gaps=[SkillGap.model_validate(gap) for gap in gaps],
-            plan_tasks=[PlanTask.model_validate(task) for task in tasks],
-            evidence_history=[EvidenceRecord.model_validate(ev) for ev in evidence],
-            assessments=[AssessmentRecord.model_validate(assess) for assess in assessments],
-            progress=LearnerProgress.model_validate(progress) if progress else None,
-            conversations=[PathConversationMessage.model_validate(conv) for conv in conversations]
+            gaps=[SkillGapSchema.model_validate(gap) for gap in gaps],
+            plan_tasks=[PlanTaskSchema.model_validate(task) for task in tasks],
+            evidence_history=[EvidenceRecordSchema.model_validate(ev) for ev in evidence],
+            assessments=[AssessmentRecordSchema.model_validate(assess) for assess in assessments],
+            progress=LearnerProgressSchema.model_validate(progress) if progress else None,
+            conversations=[PathConversationMessageSchema.model_validate(conv) for conv in conversations]
         )
     
     def update_learner_state(self, learner_id: str, state_data: LearnerStateCreate) -> Optional[LearnerState]:

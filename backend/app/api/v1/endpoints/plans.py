@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 from app.db.session import get_db
-from app.schemas.learner import PlanTask, PlanTaskCreate
+from app.schemas.learner import PlanTask as PlanTaskSchema, PlanTaskCreate
 from app.services.learner_service import LearnerService
 from app.services.evaluation_service import EvaluationService
 
@@ -15,7 +15,7 @@ class GeneratePlanRequest(BaseModel):
     target_role_id: str
 
 
-@router.post("/generate", response_model=List[PlanTask])
+@router.post("/generate", response_model=List[PlanTaskSchema])
 def generate_learning_plan(
     request: GeneratePlanRequest,
     db: Session = Depends(get_db)
@@ -37,19 +37,19 @@ def generate_learning_plan(
     )
     
     # Update state with new plan
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
     user = learner_service.get_learner(request.learner_id)
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=state.profile,
         documents=state.documents,
         skills=state.skills,
         selected_target_id=request.target_role_id,
         gaps=state.gaps,
-        plan_tasks=[PlanTask(**task) for task in tasks],
+        plan_tasks=[PlanTaskSchema(**task) for task in tasks],
         evidence_history=state.evidence_history,
         assessments=state.assessments,
-        progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
+        progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
         conversations=state.conversations
     )
     
@@ -57,7 +57,7 @@ def generate_learning_plan(
     return updated_state.plan_tasks
 
 
-@router.get("/{learner_id}", response_model=List[PlanTask])
+@router.get("/{learner_id}", response_model=List[PlanTaskSchema])
 def get_learning_plan(
     learner_id: str,
     db: Session = Depends(get_db)

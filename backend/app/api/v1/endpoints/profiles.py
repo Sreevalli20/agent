@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.learner import Profile, ProfileCreate
+from app.schemas.learner import Profile as ProfileSchema, ProfileCreate
 from app.services.learner_service import LearnerService
 
 router = APIRouter()
 
 
-@router.post("/{learner_id}", response_model=Profile)
+@router.post("/{learner_id}", response_model=ProfileSchema)
 def create_or_update_profile(
     learner_id: str,
     profile_data: ProfileCreate,
@@ -16,7 +16,7 @@ def create_or_update_profile(
     """Create or update learner profile"""
     service = LearnerService(db)
     # Get current state to update
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
     user = service.get_learner(learner_id)
     if not user:
         raise HTTPException(status_code=404, detail="Learner not found")
@@ -26,7 +26,7 @@ def create_or_update_profile(
         raise HTTPException(status_code=404, detail="Learner state not found")
     
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=profile_data,
         documents=state.documents,
         skills=state.skills,
@@ -35,7 +35,7 @@ def create_or_update_profile(
         plan_tasks=state.plan_tasks,
         evidence_history=state.evidence_history,
         assessments=state.assessments,
-        progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
+        progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
         conversations=state.conversations
     )
     
@@ -43,7 +43,7 @@ def create_or_update_profile(
     return updated.profile
 
 
-@router.get("/{learner_id}", response_model=Profile)
+@router.get("/{learner_id}", response_model=ProfileSchema)
 def get_profile(
     learner_id: str,
     db: Session = Depends(get_db)

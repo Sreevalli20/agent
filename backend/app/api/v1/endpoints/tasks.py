@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.learner import PlanTask
+from app.schemas.learner import PlanTask as PlanTaskSchema
 from app.services.learner_service import LearnerService
 
 router = APIRouter()
 
 
-@router.patch("/{task_id}", response_model=PlanTask)
+@router.patch("/{task_id}", response_model=PlanTaskSchema)
 def update_task_status(
     task_id: str,
     status: str,
@@ -39,10 +39,10 @@ def update_task_status(
                         updated_tasks.append(t)
                 
                 # Update progress
-                from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+                from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
                 user = learner_service.get_learner(learner.id)
                 updated_state = LearnerStateCreate(
-                    user=User.model_validate(user),
+                    user=UserSchema.model_validate(user),
                     profile=state.profile,
                     documents=state.documents,
                     skills=state.skills,
@@ -51,7 +51,7 @@ def update_task_status(
                     plan_tasks=updated_tasks,
                     evidence_history=state.evidence_history,
                     assessments=state.assessments,
-                    progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
+                    progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
                     conversations=state.conversations
                 )
                 

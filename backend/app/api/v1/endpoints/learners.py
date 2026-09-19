@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.db.session import get_db
-from app.schemas.learner import User, UserCreate, LearnerState, LearnerStateCreate
+from app.schemas.learner import User as UserSchema, UserCreate, LearnerState, LearnerStateCreate
 from app.models.learner import User as UserModel
 from app.services.learner_service import LearnerService
 
 router = APIRouter()
 
 
-@router.post("/", response_model=User)
+@router.post("/", response_model=UserSchema)
 def create_learner(
     user_data: UserCreate,
     db: Session = Depends(get_db)
@@ -19,7 +19,7 @@ def create_learner(
     return service.create_learner(user_data)
 
 
-@router.get("/{learner_id}", response_model=User)
+@router.get("/{learner_id}", response_model=UserSchema)
 def get_learner(
     learner_id: str,
     db: Session = Depends(get_db)
@@ -32,7 +32,7 @@ def get_learner(
     return learner
 
 
-@router.get("/", response_model=List[User])
+@router.get("/", response_model=List[UserSchema])
 def get_all_learners(
     skip: int = 0,
     limit: int = 100,

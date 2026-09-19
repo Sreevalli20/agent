@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 from app.db.session import get_db
-from app.schemas.learner import SkillGap, SkillCapability
+from app.schemas.learner import SkillGap as SkillGapSchema, SkillCapability as SkillCapabilitySchema
 from app.services.learner_service import LearnerService
 from app.services.evaluation_service import EvaluationService
 
@@ -15,7 +15,7 @@ class AnalyzeProfileRequest(BaseModel):
     target_role_id: str
 
 
-@router.post("/profile", response_model=List[SkillCapability])
+@router.post("/profile", response_model=List[SkillCapabilitySchema])
 def analyze_profile(
     request: AnalyzeProfileRequest,
     db: Session = Depends(get_db)
@@ -29,7 +29,7 @@ def analyze_profile(
         raise HTTPException(status_code=404, detail="Learner not found")
     
     # Generate skills using evaluation engine logic
-    from app.schemas.learner import Profile
+    from app.schemas.learner import Profile as ProfileSchema
     profile = state.profile
     documents = state.documents
     
@@ -44,19 +44,19 @@ def analyze_profile(
     )
     
     # Update state with new skills
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
     user = learner_service.get_learner(request.learner_id)
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=profile,
         documents=state.documents,
-        skills=[SkillCapability(**skill) for skill in skills],
+        skills=[SkillCapabilitySchema(**skill) for skill in skills],
         selected_target_id=request.target_role_id,
         gaps=state.gaps,
         plan_tasks=state.plan_tasks,
         evidence_history=state.evidence_history,
         assessments=state.assessments,
-        progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
+        progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
         conversations=state.conversations
     )
     
@@ -64,7 +64,7 @@ def analyze_profile(
     return updated_state.skills
 
 
-@router.post("/gaps", response_model=List[SkillGap])
+@router.post("/gaps", response_model=List[SkillGapSchema])
 def compute_gaps(
     request: AnalyzeProfileRequest,
     db: Session = Depends(get_db)
@@ -84,19 +84,19 @@ def compute_gaps(
     )
     
     # Update state with new gaps
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
     user = learner_service.get_learner(request.learner_id)
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=state.profile,
         documents=state.documents,
         skills=state.skills,
         selected_target_id=request.target_role_id,
-        gaps=[SkillGap(**gap) for gap in gaps],
+        gaps=[SkillGapSchema(**gap) for gap in gaps],
         plan_tasks=state.plan_tasks,
         evidence_history=state.evidence_history,
         assessments=state.assessments,
-        progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
+        progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
         conversations=state.conversations
     )
     
@@ -104,7 +104,7 @@ def compute_gaps(
     return updated_state.gaps
 
 
-@router.get("/{learner_id}/gaps", response_model=List[SkillGap])
+@router.get("/{learner_id}/gaps", response_model=List[SkillGapSchema])
 def get_gaps(
     learner_id: str,
     db: Session = Depends(get_db)

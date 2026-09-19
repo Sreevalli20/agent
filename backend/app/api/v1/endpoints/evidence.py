@@ -4,8 +4,8 @@ from typing import List
 from pydantic import BaseModel
 from app.db.session import get_db
 from app.schemas.learner import (
-    EvidenceRecord, EvidenceRecordCreate, AssessmentRecord,
-    SkillCapability, SkillGap, PlanTask, LearnerProgress
+    EvidenceRecord as EvidenceRecordSchema, EvidenceRecordCreate, AssessmentRecord as AssessmentRecordSchema,
+    SkillCapability as SkillCapabilitySchema, SkillGap as SkillGapSchema, PlanTask as PlanTaskSchema, LearnerProgress as LearnerProgressSchema
 )
 from app.services.learner_service import LearnerService
 from app.services.evaluation_service import EvaluationService
@@ -61,19 +61,19 @@ def submit_evidence(
     )
     
     # Update state with reassessment results
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema
     user = learner_service.get_learner(request.learner_id)
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=state.profile,
         documents=state.documents,
-        skills=[SkillCapability(**skill) for skill in result['updatedState']['skills']],
+        skills=[SkillCapabilitySchema(**skill) for skill in result['updatedState']['skills']],
         selected_target_id=state.selected_target_id,
-        gaps=[SkillGap(**gap) for gap in result['updatedState']['gaps']],
-        plan_tasks=[PlanTask(**task) for task in result['updatedState']['planTasks']],
-        evidence_history=[EvidenceRecord(**ev) for ev in result['updatedState']['evidenceHistory']],
-        assessments=[AssessmentRecord(**assess) for assess in result['updatedState']['assessments']],
-        progress=LearnerProgress(**result['updatedState']['progress']) if result['updatedState'].get('progress') else None,
+        gaps=[SkillGapSchema(**gap) for gap in result['updatedState']['gaps']],
+        plan_tasks=[PlanTaskSchema(**task) for task in result['updatedState']['planTasks']],
+        evidence_history=[EvidenceRecordSchema(**ev) for ev in result['updatedState']['evidenceHistory']],
+        assessments=[AssessmentRecordSchema(**assess) for assess in result['updatedState']['assessments']],
+        progress=LearnerProgressSchema(**result['updatedState']['progress']) if result['updatedState'].get('progress') else None,
         conversations=state.conversations
     )
     
@@ -86,7 +86,7 @@ def submit_evidence(
     }
 
 
-@router.get("/{learner_id}", response_model=List[EvidenceRecord])
+@router.get("/{learner_id}", response_model=List[EvidenceRecordSchema])
 def get_evidence_history(
     learner_id: str,
     db: Session = Depends(get_db)

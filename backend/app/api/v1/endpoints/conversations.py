@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 from app.db.session import get_db
-from app.schemas.learner import PathConversationMessage, PathConversationMessageCreate
+from app.schemas.learner import PathConversationMessage as PathConversationMessageSchema, PathConversationMessageCreate
 from app.services.learner_service import LearnerService
 from app.services.evaluation_service import EvaluationService
 
@@ -15,7 +15,7 @@ class AskPathRequest(BaseModel):
     query: str
 
 
-@router.post("/ask", response_model=PathConversationMessage)
+@router.post("/ask", response_model=PathConversationMessageSchema)
 def ask_path_query(
     request: AskPathRequest,
     db: Session = Depends(get_db)
@@ -45,10 +45,10 @@ def ask_path_query(
     response = evaluation_service.answer_path_query(state_dict, request.query)
     
     # Add conversation to state
-    from app.schemas.learner import LearnerStateCreate, User, LearnerProgress
+    from app.schemas.learner import LearnerStateCreate, User as UserSchema, LearnerProgress as LearnerProgressSchema
     user = learner_service.get_learner(request.learner_id)
     updated_state = LearnerStateCreate(
-        user=User.model_validate(user),
+        user=UserSchema.model_validate(user),
         profile=state.profile,
         documents=state.documents,
         skills=state.skills,
@@ -57,15 +57,15 @@ def ask_path_query(
         plan_tasks=state.plan_tasks,
         evidence_history=state.evidence_history,
         assessments=state.assessments,
-        progress=LearnerProgress.model_validate(state.progress) if state.progress else None,
-        conversations=[PathConversationMessage(**response)] + state.conversations
+        progress=LearnerProgressSchema.model_validate(state.progress) if state.progress else None,
+        conversations=[PathConversationMessageSchema(**response)] + state.conversations
     )
     
     learner_service.update_learner_state(request.learner_id, updated_state)
-    return PathConversationMessage(**response)
+    return PathConversationMessageSchema(**response)
 
 
-@router.get("/{learner_id}", response_model=List[PathConversationMessage])
+@router.get("/{learner_id}", response_model=List[PathConversationMessageSchema])
 def get_conversations(
     learner_id: str,
     db: Session = Depends(get_db)
