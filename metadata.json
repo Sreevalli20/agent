@@ -1,0 +1,6 @@
+{
+  "name": "EduPath",
+  "description": "Turn your current skills into your next career with evidence-based career capability mapping, gap analysis, and dynamic 7-day execution planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
