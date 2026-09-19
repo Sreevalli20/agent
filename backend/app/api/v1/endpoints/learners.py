@@ -56,7 +56,7 @@ def delete_learner(
     return {"message": "Learner deleted successfully"}
 
 
-@router.get("/{learner_id}/state", response_model=LearnerState)
+@router.get("/{learner_id}/state")
 def get_learner_state(
     learner_id: str,
     db: Session = Depends(get_db)
@@ -67,11 +67,12 @@ def get_learner_state(
         state = service.get_learner_state(learner_id)
         if not state:
             raise HTTPException(status_code=404, detail="Learner not found")
-        return state
+        return state.model_dump()
     except Exception as e:
         import traceback
+        error_msg = f"Error retrieving learner state: {str(e)}"
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error retrieving learner state: {str(e)}")
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @router.put("/{learner_id}/state", response_model=LearnerState)
