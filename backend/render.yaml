@@ -7,10 +7,16 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: edupath-db
+          property: connectionString
       - key: SECRET_KEY
         value: edupath-production-secret-key-change-in-deployment
       - key: ENVIRONMENT
         value: production
       - key: CORS_ORIGINS
         value: https://edupath-silk.vercel.app,https://localhost:3000
+databases:
+  - name: edupath-db
+    databaseName: edupath
+    plan: free
