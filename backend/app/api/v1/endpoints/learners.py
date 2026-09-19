@@ -45,23 +45,31 @@ def get_all_learners(
 
 @router.get("/demo/alex/state")
 def get_demo_alex_state(db: Session = Depends(get_db)):
-    """Get or create demo Alex Chen learner state"""
+    """Get or create demo Alex Chen learner state with comprehensive seed data"""
     service = LearnerService(db)
     
-    # Try to get existing demo learner
-    demo_alex = service.get_learner("demo-learner-alex")
-    
-    if not demo_alex:
-        # Create demo learner if doesn't exist
-        from app.schemas.learner import UserCreate
-        demo_user = service.create_learner(UserCreate(
-            name="Alex Chen",
-            email="alex.chen@example.edu",
-            is_demo=True
-        ))
-        return service.get_learner_state(demo_user.id).model_dump()
+    # Always ensure comprehensive demo data is seeded
+    try:
+        from seed_demo_data import seed_demo_alex
+        seed_demo_alex()
+    except Exception as e:
+        print(f"Warning: Could not seed demo data: {e}")
     
     return service.get_learner_state("demo-learner-alex").model_dump()
+
+
+@router.post("/demo/alex/seed")
+def seed_demo_alex_endpoint(db: Session = Depends(get_db)):
+    """Manually trigger seeding of Alex Chen demo data"""
+    try:
+        from seed_demo_data import seed_demo_alex
+        seed_demo_alex()
+        return {"message": "Alex Chen demo data seeded successfully"}
+    except Exception as e:
+        import traceback
+        error_msg = f"Error seeding demo data: {str(e)}"
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @router.get("/demo/marcus/state")

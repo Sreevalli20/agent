@@ -12,31 +12,51 @@ from app.models.learner import (
 import json
 
 def seed_demo_alex():
-    """Seed Alex Chen demo learner with full state"""
+    """Seed Alex Chen demo learner with full state (idempotent - updates if exists)"""
     db = SessionLocal()
     
     try:
         # Check if Alex already exists
         existing_alex = db.query(User).filter(User.email == "alex.chen@example.edu").first()
-        if existing_alex:
-            print("Alex Chen demo learner already exists in database. Skipping seed.")
-            return
         
-        # Create User
-        alex_user = User(
-            id="demo-learner-alex",
-            name="Alex Chen",
-            email="alex.chen@example.edu",
-            is_demo=True,
-            created_at=datetime.fromisoformat("2026-09-12T10:00:00Z")
-        )
-        db.add(alex_user)
-        db.flush()
+        if existing_alex:
+            print("Alex Chen demo learner already exists. Updating with comprehensive demo data...")
+            learner_id = existing_alex.id
+            
+            # Delete existing related data for clean update
+            db.query(PathConversationMessage).filter(PathConversationMessage.learner_id == learner_id).delete()
+            db.query(LearnerProgress).filter(LearnerProgress.learner_id == learner_id).delete()
+            db.query(AssessmentRecord).filter(AssessmentRecord.learner_id == learner_id).delete()
+            db.query(EvidenceRecord).filter(EvidenceRecord.learner_id == learner_id).delete()
+            db.query(PlanTask).filter(PlanTask.learner_id == learner_id).delete()
+            db.query(SkillGap).filter(SkillGap.learner_id == learner_id).delete()
+            db.query(SkillCapability).filter(SkillCapability.learner_id == learner_id).delete()
+            db.query(DocumentUpload).filter(DocumentUpload.learner_id == learner_id).delete()
+            db.query(Profile).filter(Profile.learner_id == learner_id).delete()
+            
+            # Update user
+            existing_alex.name = "Alex Chen"
+            existing_alex.is_demo = True
+            db.flush()
+        else:
+            print("Creating new Alex Chen demo learner...")
+            learner_id = "demo-learner-alex"
+            
+            # Create User
+            alex_user = User(
+                id=learner_id,
+                name="Alex Chen",
+                email="alex.chen@example.edu",
+                is_demo=True,
+                created_at=datetime.fromisoformat("2026-09-12T10:00:00Z")
+            )
+            db.add(alex_user)
+            db.flush()
         
         # Create Profile
         alex_profile = Profile(
             id="profile-alex",
-            learner_id="demo-learner-alex",
+            learner_id=learner_id,
             full_name="Alex Chen",
             experience_level="Career Switcher",
             current_role="Operations Specialist",
@@ -53,7 +73,7 @@ def seed_demo_alex():
         documents = [
             DocumentUpload(
                 id="doc-alex-1",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 filename="Alex_Chen_Resume_2026.pdf",
                 file_type="application/pdf",
                 size_bytes=248000,
@@ -64,7 +84,7 @@ def seed_demo_alex():
             ),
             DocumentUpload(
                 id="doc-alex-2",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 filename="SQL_Certification_Credential.pdf",
                 file_type="application/pdf",
                 size_bytes=182000,
@@ -75,7 +95,7 @@ def seed_demo_alex():
             ),
             DocumentUpload(
                 id="doc-alex-3",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 filename="Inventory_Reconciliation_Project.pdf",
                 file_type="application/pdf",
                 size_bytes=412000,
@@ -92,7 +112,7 @@ def seed_demo_alex():
         skills = [
             SkillCapability(
                 id="skill-alex-1",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="SQL & Relational Querying",
                 category="Technical",
                 tags=json.dumps(['sql', 'relational-db', 'query-optimization', 'window-functions']),
@@ -106,7 +126,7 @@ def seed_demo_alex():
             ),
             SkillCapability(
                 id="skill-alex-2",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Power BI / Tableau Dashboarding",
                 category="Technical",
                 tags=json.dumps(['power-bi', 'tableau', 'dashboards', 'dax', 'reporting']),
@@ -120,7 +140,7 @@ def seed_demo_alex():
             ),
             SkillCapability(
                 id="skill-alex-3",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Python Data Analysis (pandas/numpy)",
                 category="Technical",
                 tags=json.dumps(['python', 'pandas', 'numpy', 'data-wrangling']),
@@ -134,7 +154,7 @@ def seed_demo_alex():
             ),
             SkillCapability(
                 id="skill-alex-4",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Business Statistics & Hypothesis Testing",
                 category="Analytics & BI",
                 tags=json.dumps(['statistics', 'hypothesis-testing', 'variance-analysis', 'kpis']),
@@ -148,7 +168,7 @@ def seed_demo_alex():
             ),
             SkillCapability(
                 id="skill-alex-5",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Executive Communication & Storytelling",
                 category="Soft Skills",
                 tags=json.dumps(['communication', 'storytelling', 'presentations', 'stakeholders']),
@@ -162,7 +182,7 @@ def seed_demo_alex():
             ),
             SkillCapability(
                 id="skill-alex-6",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Data Modeling & ETL Pipelines",
                 category="Technical",
                 tags=json.dumps(['etl', 'data-modeling', 'star-schema', 'warehousing']),
@@ -182,7 +202,7 @@ def seed_demo_alex():
         gaps = [
             SkillGap(
                 id="gap-alex-bi",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Power BI / Tableau Dashboarding",
                 category="Analytics & BI",
                 current_evidence="Limited evidence",
@@ -197,7 +217,7 @@ def seed_demo_alex():
             ),
             SkillGap(
                 id="gap-alex-py",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Python Data Analysis (pandas/numpy)",
                 category="Analytics & BI",
                 current_evidence="Limited evidence",
@@ -212,7 +232,7 @@ def seed_demo_alex():
             ),
             SkillGap(
                 id="gap-alex-sql",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="SQL & Relational Querying",
                 category="Analytics & BI",
                 current_evidence="Strong evidence",
@@ -227,7 +247,7 @@ def seed_demo_alex():
             ),
             SkillGap(
                 id="gap-alex-stats",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Business Statistics & Hypothesis Testing",
                 category="Analytics & BI",
                 current_evidence="Moderate evidence",
@@ -242,7 +262,7 @@ def seed_demo_alex():
             ),
             SkillGap(
                 id="gap-alex-etl",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Data Modeling & ETL Pipelines",
                 category="Analytics & BI",
                 current_evidence="No evidence",
@@ -263,7 +283,7 @@ def seed_demo_alex():
         tasks = [
             PlanTask(
                 id="task-alex-1",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 day=1,
                 capability="SQL & Relational Querying",
                 learning_objective="Analyze cohort retention and customer lifetime value using SQL window functions.",
@@ -280,7 +300,7 @@ def seed_demo_alex():
             ),
             PlanTask(
                 id="task-alex-2",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 day=2,
                 capability="Power BI / Tableau Dashboarding",
                 learning_objective="Design a clean visual KPI card grid and date hierarchy filter model.",
@@ -297,7 +317,7 @@ def seed_demo_alex():
             ),
             PlanTask(
                 id="task-alex-3",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 day=3,
                 capability="Power BI / Tableau Dashboarding",
                 learning_objective="Build an interactive business dashboard with dynamic DAX metrics.",
@@ -312,7 +332,7 @@ def seed_demo_alex():
             ),
             PlanTask(
                 id="task-alex-4",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 day=4,
                 capability="Python Data Analysis (pandas/numpy)",
                 learning_objective="Clean a non-standard tabular dataset and handle anomalous missing values.",
@@ -327,7 +347,7 @@ def seed_demo_alex():
             ),
             PlanTask(
                 id="task-alex-5",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 day=5,
                 capability="Business Statistics & Hypothesis Testing",
                 learning_objective="Formulate and evaluate a two-tailed hypothesis test on conversion rates.",
@@ -342,7 +362,7 @@ def seed_demo_alex():
             ),
             PlanTask(
                 id="task-alex-6",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 day=6,
                 capability="Executive Communication & Storytelling",
                 learning_objective="Synthesize data analysis findings into an executive briefing document.",
@@ -357,7 +377,7 @@ def seed_demo_alex():
             ),
             PlanTask(
                 id="task-alex-7",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 day=7,
                 capability="Data Modeling & ETL Pipelines",
                 learning_objective="Construct a star-schema dimensional model for an e-commerce order workflow.",
@@ -378,7 +398,7 @@ def seed_demo_alex():
         evidence_records = [
             EvidenceRecord(
                 id="ev-alex-1",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 task_id="task-alex-1",
                 task_title="Cohort Retention Window Queries",
                 capability="SQL & Relational Querying",
@@ -393,7 +413,7 @@ def seed_demo_alex():
             ),
             EvidenceRecord(
                 id="ev-alex-2",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 task_id="task-alex-2",
                 task_title="Visual KPI Card Grid and Model",
                 capability="Power BI / Tableau Dashboarding",
@@ -414,7 +434,7 @@ def seed_demo_alex():
         assessments = [
             AssessmentRecord(
                 id="assess-alex-1",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="SQL & Relational Querying",
                 previous_level="Beginner",
                 new_level="Intermediate",
@@ -436,7 +456,7 @@ def seed_demo_alex():
             ),
             AssessmentRecord(
                 id="assess-alex-2",
-                learner_id="demo-learner-alex",
+                learner_id=learner_id,
                 capability="Power BI / Tableau Dashboarding",
                 previous_level="None",
                 new_level="Beginner",
@@ -461,7 +481,7 @@ def seed_demo_alex():
         
         # Create Progress
         progress = LearnerProgress(
-            learner_id="demo-learner-alex",
+            learner_id=learner_id,
             completed_activities=2,
             total_activities=7,
             current_activities=1,
@@ -477,7 +497,7 @@ def seed_demo_alex():
         # Create Conversation
         conversation = PathConversationMessage(
             id="conv-alex-1",
-            learner_id="demo-learner-alex",
+            learner_id=learner_id,
             sender="learner",
             query="What should I learn today?",
             response="Your current primary focus is **Day 3: Power BI / Tableau Dashboarding**. You are scheduled to build an interactive business dashboard using the provided dataset, focusing on Year-over-Year variance and regional drill-downs (90 minutes). Completing this task and submitting your dashboard deliverable directly targets your highest-priority capability gap.",
