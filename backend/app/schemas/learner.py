@@ -29,6 +29,8 @@ class ProfileBase(BaseModel):
     target_role: str
     weekly_available_hours: int
     initial_skills_text: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 class ProfileCreate(ProfileBase):
@@ -203,8 +205,8 @@ class LearnerProgressBase(BaseModel):
     total_activities: int
     current_activities: int
     remaining_gaps: int
-    recently_strengthened: List[str]
-    capabilities_needing_evidence: List[str]
+    recently_strengthened: List[str] = []
+    capabilities_needing_evidence: List[str] = []
     next_milestone: str
     weekly_target_hours: int
     hours_completed_this_week: float
