@@ -18,10 +18,14 @@ from app.db.base import Base
 async def lifespan(app: FastAPI):
     # Startup
     print("Starting EduPath Backend...")
-    # Create database tables
-    from app.db.base import Base, engine
-    Base.metadata.create_all(bind=engine)
-    print("Database tables created/verified!")
+    try:
+        # Create database tables
+        from app.db.base import Base, engine
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created/verified!")
+    except Exception as e:
+        print(f"Error creating database tables: {e}")
+        print(f"DATABASE_URL: {engine.url}")
     yield
     # Shutdown
     print("Shutting down EduPath Backend...")
